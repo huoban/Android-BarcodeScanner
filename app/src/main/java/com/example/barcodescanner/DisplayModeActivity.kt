@@ -113,14 +113,6 @@ class DisplayModeActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
-        binding.btnShareApp.setOnClickListener {
-            shareApp()
-        }
-
-        binding.btnAbout.setOnClickListener {
-            startActivity(Intent(this, AboutActivity::class.java))
-        }
-
         binding.zoomButton.setOnClickListener {
             toggleZoom()
         }
@@ -316,12 +308,6 @@ class DisplayModeActivity : AppCompatActivity() {
     private fun vibrate() {
         val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
         vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
-    }
-
-    private fun shareApp() {
-        val appPackageName = packageName
-        val shareMessage = getString(R.string.share_app_message, "https://play.google.com/store/apps/details?id=$appPackageName")
-        Util.shareText(this, shareMessage)
     }
 
     private fun setupViewfinderSize() {

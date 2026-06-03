@@ -19,48 +19,6 @@
         android:layout_centerInParent="true"
         android:background="@drawable/scanning_frame" />
 
-    <!-- 顶部按钮栏 -->
-    <LinearLayout
-        android:id="@+id/leftSideButtons"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true"
-        android:layout_margin="16dp"
-        android:orientation="vertical"
-        android:background="@color/scan_overlay"
-        android:padding="8dp">
-
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/btnSettings"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginBottom="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/settings_title"
-            android:src="@android:drawable/ic_menu_preferences"
-            app:tint="@color/white" />
-
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/btnShareApp"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginBottom="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/share_via"
-            android:src="@android:drawable/ic_menu_share"
-            app:tint="@color/white" />
-
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/btnAbout"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/about_title"
-            android:src="@android:drawable/ic_menu_info_details"
-            app:tint="@color/white" />
-    </LinearLayout>
-
     <!-- 底部按钮栏 -->
     <LinearLayout
         android:id="@+id/rightSideButtons"
@@ -74,13 +32,13 @@
         android:padding="8dp">
 
         <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/zoomButton"
+            android:id="@+id/historyButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginBottom="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="缩放"
-            android:src="@android:drawable/ic_menu_zoom"
+            android:contentDescription="@string/history_title"
+            android:src="@android:drawable/ic_menu_recent_history"
             app:tint="@color/white" />
 
         <androidx.appcompat.widget.AppCompatImageButton
@@ -94,12 +52,22 @@
             app:tint="@color/white" />
 
         <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/historyButton"
+            android:id="@+id/zoomButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginBottom="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="缩放"
+            android:src="@android:drawable/ic_menu_zoom"
+            app:tint="@color/white" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/btnSettings"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/history_title"
-            android:src="@android:drawable/ic_menu_recent_history"
+            android:contentDescription="@string/settings_title"
+            android:src="@android:drawable/ic_menu_preferences"
             app:tint="@color/white" />
     </LinearLayout>
 

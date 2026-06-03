@@ -188,4 +188,15 @@
 
     </PreferenceCategory>
 
+    <!-- 关于 -->
+    <PreferenceCategory
+        android:title="关于">
+
+        <Preference
+            android:key="about"
+            android:title="@string/about_title"
+            android:summary="查看应用信息" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>
