@@ -1,5 +1,6 @@
 package com.example.barcodescanner
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -16,20 +17,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.barcodescanner.data.database.AppDatabase
 import com.example.barcodescanner.data.database.entities.HistoryEntity
-import com.example.barcodescanner.utils.CsvExporter
 import com.example.barcodescanner.utils.Util
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class HistoryActivity : AppCompatActivity() {
 
     private lateinit var database: AppDatabase
     private lateinit var adapter: HistoryAdapter
-    private val selectedItems = mutableSetOf<Long>()
-    private var isMultiSelectMode = false
-    private var searchJob: Job? = null
+    private var searchJob: kotlinx.coroutines.Job? = null
     private lateinit var etSearch: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,11 +40,7 @@ class HistoryActivity : AppCompatActivity() {
         supportActionBar?.title = getString(R.string.history_title)
 
         toolbar.setNavigationOnClickListener {
-            if (isMultiSelectMode) {
-                exitMultiSelectMode()
-            } else {
-                onBackPressedDispatcher.onBackPressed()
-            }
+            onBackPressedDispatcher.onBackPressed()
         }
 
         etSearch = findViewById<EditText>(R.id.etSearch)
@@ -62,19 +54,6 @@ class HistoryActivity : AppCompatActivity() {
 
         setupRecyclerView()
         loadHistory(null)
-
-        // 导出按钮
-        findViewById<android.widget.Button>(R.id.btnCancelExport).setOnClickListener {
-            exitMultiSelectMode()
-        }
-
-        findViewById<android.widget.Button>(R.id.btnExportCSV).setOnClickListener {
-            exportSelectedToCSV()
-        }
-
-        findViewById<android.widget.ImageButton>(R.id.ibMultiShare).setOnClickListener {
-            shareSelectedItems()
-        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -85,10 +64,40 @@ class HistoryActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_delete_all -> {
-                deleteAllHistory()
+                showDeleteDialog()
                 true
             }
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun showDeleteDialog() {
+        val options = arrayOf("删除15天前", "删除30天前", "删除全部")
+        AlertDialog.Builder(this)
+            .setTitle("删除历史记录")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> deleteOlderThanDays(15)
+                    1 -> deleteOlderThanDays(30)
+                    2 -> deleteAllHistory()
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun deleteOlderThanDays(days: Int) {
+        val cutoffTimestamp = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
+        lifecycleScope.launch {
+            database.historyDao().deleteOlderThan(cutoffTimestamp)
+            Toast.makeText(this@HistoryActivity, "已删除${days}天前的记录", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun deleteAllHistory() {
+        lifecycleScope.launch {
+            database.historyDao().deleteAll()
+            Toast.makeText(this@HistoryActivity, "已清空全部记录", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -96,19 +105,8 @@ class HistoryActivity : AppCompatActivity() {
         val recyclerView = findViewById<RecyclerView>(R.id.rvHistory)
         adapter = HistoryAdapter(
             onItemClick = { entity ->
-                if (isMultiSelectMode) {
-                    toggleSelection(entity.id)
-                } else {
-                    copyToClipboard(entity.resultText)
-                    openImagePreview(entity)
-                }
-            },
-            onItemLongClick = { entity ->
-                if (!isMultiSelectMode) {
-                    enterMultiSelectMode()
-                    toggleSelection(entity.id)
-                }
-                true
+                copyToClipboard(entity.resultText)
+                openImagePreview(entity)
             }
         )
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -137,58 +135,6 @@ class HistoryActivity : AppCompatActivity() {
         }
     }
 
-    private fun enterMultiSelectMode() {
-        isMultiSelectMode = true
-        selectedItems.clear()
-        findViewById<android.widget.LinearLayout>(R.id.llExportBar).visibility = android.view.View.VISIBLE
-        adapter.notifyDataSetChanged()
-    }
-
-    private fun exitMultiSelectMode() {
-        isMultiSelectMode = false
-        selectedItems.clear()
-        findViewById<android.widget.LinearLayout>(R.id.llExportBar).visibility = android.view.View.GONE
-        adapter.notifyDataSetChanged()
-    }
-
-    private fun toggleSelection(id: Long) {
-        if (selectedItems.contains(id)) {
-            selectedItems.remove(id)
-        } else {
-            selectedItems.add(id)
-        }
-        adapter.notifyDataSetChanged()
-    }
-
-    private fun exportSelectedToCSV() {
-        if (selectedItems.isEmpty()) return
-        lifecycleScope.launch {
-            val selectedHistory = database.historyDao().getAll().first { list ->
-                list.any { it.id in selectedItems }
-            }.filter { it.id in selectedItems }
-            CsvExporter.export(this@HistoryActivity, selectedHistory)
-            exitMultiSelectMode()
-        }
-    }
-
-    private fun shareSelectedItems() {
-        if (selectedItems.isEmpty()) return
-        lifecycleScope.launch {
-            val selectedHistory = database.historyDao().getAll().first { list ->
-                list.any { it.id in selectedItems }
-            }.filter { it.id in selectedItems }
-            val shareText = selectedHistory.joinToString("\n\n") { "${it.barcodeType}: ${it.resultText}" }
-            Util.shareText(this@HistoryActivity, shareText)
-            exitMultiSelectMode()
-        }
-    }
-
-    private fun deleteAllHistory() {
-        lifecycleScope.launch {
-            database.historyDao().deleteAll()
-        }
-    }
-
     private fun copyToClipboard(text: String) {
         Util.copyToClipboard(this, text)
     }
@@ -206,8 +152,7 @@ class HistoryActivity : AppCompatActivity() {
 }
 
 class HistoryAdapter(
-    private val onItemClick: (HistoryEntity) -> Unit,
-    private val onItemLongClick: (HistoryEntity) -> Boolean
+    private val onItemClick: (HistoryEntity) -> Unit
 ) : androidx.recyclerview.widget.RecyclerView.Adapter<HistoryAdapter.ViewHolder>() {
 
     private var items = listOf<HistoryEntity>()
@@ -237,7 +182,6 @@ class HistoryAdapter(
             text1.text = "${entity.barcodeType}: ${entity.resultText}"
             text2.text = Util.formatTimestamp(entity.timestamp)
             itemView.setOnClickListener { onItemClick(entity) }
-            itemView.setOnLongClickListener { onItemLongClick(entity) }
         }
     }
 }

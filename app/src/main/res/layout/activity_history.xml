@@ -44,39 +44,6 @@
         android:id="@+id/rvHistory"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/etSearch"
-        android:layout_above="@id/llExportBar" />
-
-    <LinearLayout
-        android:id="@+id/llExportBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        android:visibility="gone">
-
-        <Button
-            android:id="@+id/btnCancelExport"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/btn_cancel" />
-
-        <Button
-            android:id="@+id/btnExportCSV"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/btn_export_csv" />
-
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/ibMultiShare"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="批量分享"
-            android:src="@android:drawable/ic_menu_share" />
-    </LinearLayout>
+        android:layout_below="@id/etSearch" />
 
 </RelativeLayout>

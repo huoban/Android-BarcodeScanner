@@ -27,9 +27,10 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
 
+        // 开机进入等待页面时间
         Handler(Looper.getMainLooper()).postDelayed({
             requestPermissions()
-        }, 1500)
+        }, 0)
     }
 
     private fun requestPermissions() {

@@ -30,6 +30,9 @@ interface HistoryDao {
     @Query("DELETE FROM history")
     suspend fun deleteAll()
 
+    @Query("DELETE FROM history WHERE timestamp < :timestamp")
+    suspend fun deleteOlderThan(timestamp: Long)
+
     @Query("SELECT COUNT(*) FROM history")
     suspend fun getCount(): Int
 

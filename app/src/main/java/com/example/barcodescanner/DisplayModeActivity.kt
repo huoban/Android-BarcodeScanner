@@ -138,16 +138,8 @@ class DisplayModeActivity : AppCompatActivity() {
             scanCount = 0
         }
 
-        binding.btnContinue.setOnClickListener {
-            hideResultView()
-        }
-
         binding.btnSearch.setOnClickListener {
             submitToWebhook(binding.tvBarcodeResult.text.toString())
-        }
-
-        binding.btnShare.setOnClickListener {
-            Util.shareText(this, binding.tvBarcodeResult.text.toString())
         }
 
         binding.btnCopy.setOnClickListener {

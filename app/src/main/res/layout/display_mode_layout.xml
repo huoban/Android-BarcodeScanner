@@ -191,45 +191,30 @@
             android:ellipsize="end" />
 
         <LinearLayout
-            android:id="@+id/buttonsLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/tvBarcodeResult"
             android:layout_marginTop="16dp"
             android:orientation="horizontal"
-            android:gravity="center">
+            android:gravity="center"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp">
 
             <Button
                 android:id="@+id/btnSearch"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="4dp"
+                android:layout_marginEnd="8dp"
                 android:text="@string/btn_search" />
-
-            <Button
-                android:id="@+id/btnShare"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginHorizontal="4dp"
-                android:text="@string/btn_share" />
 
             <Button
                 android:id="@+id/btnCopy"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginHorizontal="4dp"
+                android:layout_marginStart="8dp"
                 android:text="@string/btn_copy" />
-
-            <Button
-                android:id="@+id/btnContinue"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="@string/btn_continue_scan" />
         </LinearLayout>
     </RelativeLayout>
 

@@ -12,7 +12,7 @@
     <string name="welcome_tip">欢迎使用条码扫描器!将摄像头对准条码即可自动识别。</string>
     <string name="no_barcode_found">未检测到条码</string>
     <string name="scan_failed">扫描失败</string>
-    <string name="scan_duration">扫描耗时: %s 秒</string>
+    <string name="scan_duration">点击空白处继续 %s 秒</string>
 
     <!-- 版本信息 -->
     <string name="app_version">应用版本: %s</string>
