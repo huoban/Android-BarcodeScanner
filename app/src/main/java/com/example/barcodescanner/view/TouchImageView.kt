@@ -2,6 +2,7 @@ package com.example.barcodescanner.view
 
 import android.content.Context
 import android.graphics.Matrix
+import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -43,6 +44,13 @@ class TouchImageView @JvmOverloads constructor(
     private var viewHeight = 0f
     private var drawableWidth = 0f
     private var drawableHeight = 0f
+
+    override fun setImageDrawable(drawable: Drawable?) {
+        super.setImageDrawable(drawable)
+        if (viewWidth > 0 && viewHeight > 0) {
+            fitImageToView()
+        }
+    }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
