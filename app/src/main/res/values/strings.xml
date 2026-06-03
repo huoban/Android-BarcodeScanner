@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">条码扫描器</string>
+    <string name="settings_title">设置</string>
+    <string name="history_title">历史记录</string>
+    <string name="about_title">关于</string>
+
+    <!-- 通用 -->
+    <string name="copied_to_clipboard">已复制到剪贴板</string>
+    <string name="share_via">分享方式</string>
+    <string name="share_app_message">试试这款专业的条码扫描器: %s</string>
+    <string name="welcome_tip">欢迎使用条码扫描器!将摄像头对准条码即可自动识别。</string>
+    <string name="no_barcode_found">未检测到条码</string>
+    <string name="scan_failed">扫描失败</string>
+    <string name="scan_duration">扫描耗时: %s 秒</string>
+
+    <!-- 版本信息 -->
+    <string name="app_version">应用版本: %s</string>
+    <string name="ml_kit_version">Google ML Kit 版本: %s</string>
+
+    <!-- 设置分类 -->
+    <string name="pref_category_barcode_types">条码类型</string>
+    <string name="pref_category_scan_settings">扫描参数</string>
+    <string name="pref_category_notification">通知设置</string>
+    <string name="pref_category_result">结果处理</string>
+
+    <!-- 条码类型 -->
+    <string name="pref_qr_title">QR Code</string>
+    <string name="pref_qr_summary">二维码,广泛用于网址、文本等</string>
+    <string name="pref_datamatrix_title">Data Matrix</string>
+    <string name="pref_datamatrix_summary">小型二维码,常用于工业标识</string>
+    <string name="pref_code39_title">Code 39</string>
+    <string name="pref_code39_summary">工业条码,支持字母数字</string>
+    <string name="pref_upcean_title">EAN/UPC</string>
+    <string name="pref_upcean_summary">商品条码,包含 EAN-13/EAN-8/UPC-A/UPC-E</string>
+    <string name="pref_code128_title">Code 128</string>
+    <string name="pref_code128_summary">高密度条码,支持全部 ASCII 字符</string>
+    <string name="pref_pdf_title">PDF417</string>
+    <string name="pref_pdf_summary">堆叠式二维条码,大容量数据存储</string>
+    <string name="pref_aztec_title">Aztec</string>
+    <string name="pref_aztec_summary">二维矩阵码,中心定位图案</string>
+    <string name="pref_code93_title">Code 93</string>
+    <string name="pref_code93_summary">Code 39 的增强版</string>
+    <string name="pref_code2of5_title">Code 25 (ITF)</string>
+    <string name="pref_code2of5_summary">交叉 25 码,用于仓储物流</string>
+    <string name="pref_codabar_title">Codabar</string>
+    <string name="pref_codabar_summary">用于血库、图书馆等场景</string>
+
+    <!-- 扫描参数 -->
+    <string name="pref_scan_orientations_title">扫描方向</string>
+    <string name="pref_scanning_resolution_title">扫描分辨率</string>
+    <string name="pref_scanner_delay_title">扫描延迟</string>
+    <string name="pref_duplicates_timeout_title">重复超时</string>
+    <string name="pref_effort_level_title">努力级别</string>
+    <string name="pref_rapid_scanning_title">快速扫描</string>
+    <string name="pref_front_camera_title">前置摄像头</string>
+    <string name="pref_initial_zoom_title">初始缩放</string>
+
+    <!-- 扫描方向选项 -->
+    <string-array name="scan_orientations_entries">
+        <item>水平</item>
+        <item>全方向</item>
+    </string-array>
+    <string-array name="scan_orientations_values">
+        <item>Horizontal</item>
+        <item>Omni</item>
+    </string-array>
+
+    <!-- 分辨率选项 -->
+    <string-array name="scanning_resolution_entries">
+        <item>HD (720p)</item>
+        <item>Full HD (1080p)</item>
+    </string-array>
+    <string-array name="scanning_resolution_values">
+        <item>HD</item>
+        <item>FullHD</item>
+    </string-array>
+
+    <!-- 努力级别选项 -->
+    <string-array name="effort_level_entries">
+        <item>快速</item>
+        <item>更努力</item>
+    </string-array>
+    <string-array name="effort_level_values">
+        <item>Faster</item>
+        <item>Try Harder</item>
+    </string-array>
+
+    <!-- 通知设置 -->
+    <string name="pref_notification_sound_title">通知音效</string>
+    <string name="pref_notification_frequency_title">音效频率 (Hz)</string>
+    <string name="pref_notification_length_title">音效时长 (ms)</string>
+    <string name="pref_notification_modulation_title">音效调制</string>
+    <string name="pref_notification_volume_title">音效音量 (%)</string>
+    <string name="pref_notification_vibrate_title">振动</string>
+
+    <!-- 结果处理 -->
+    <string name="pref_auto_copy_title">自动复制</string>
+    <string name="pref_auto_copy_summary">扫描结果自动复制到剪贴板</string>
+    <string name="pref_open_url_title">自动提交</string>
+    <string name="pref_open_url_summary">扫描后将结果拼接到自定义地址并通过内置浏览器访问</string>
+    <string name="pref_custom_webhook_title">自定义地址</string>
+    <string name="pref_custom_webhook_summary">使用 {result} 作为扫描结果占位符,如: https://example.com/api?code={result}</string>
+    <string name="pref_encoding_title">字符串编码</string>
+
+    <!-- 编码选项 -->
+    <string-array name="encoding_entries">
+        <item>UTF-8</item>
+        <item>ISO-8859-1</item>
+        <item>GBK</item>
+    </string-array>
+    <string-array name="encoding_values">
+        <item>UTF-8</item>
+        <item>ISO-8859-1</item>
+        <item>GBK</item>
+    </string-array>
+
+    <!-- 按钮文本 -->
+    <string name="btn_search">提交</string>
+    <string name="btn_share">分享</string>
+    <string name="btn_copy">复制</string>
+    <string name="btn_continue_scan">继续</string>
+    <string name="btn_clear">清除</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_export_csv">导出 CSV</string>
+    <string name="pref_search_hint">搜索扫码内容</string>
+    <string name="image_preview_title">图片查看</string>
+</resources>

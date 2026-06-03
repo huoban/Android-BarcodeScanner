@@ -1,0 +1,24 @@
+# Android build outputs
+/build/
+/app/build/
+*.apk
+*.aab
+*.ap_
+
+# Gradle
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+*.swp
+*.swo
+
+# Local properties
+local.properties
+
+# Version auto-update (keep clean)
+*.bak

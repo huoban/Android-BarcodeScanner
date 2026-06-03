@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="BarcodeScanner">
+        <attr name="scanFrameColor" format="color" />
+        <attr name="scanFrameWidth" format="dimension" />
+        <attr name="overlayColor" format="color" />
+    </declare-styleable>
+</resources>

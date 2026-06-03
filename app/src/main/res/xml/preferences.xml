@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- 条码类型 -->
+    <PreferenceCategory
+        android:title="@string/pref_category_barcode_types">
+
+        <SwitchPreferenceCompat
+            android:key="QR"
+            android:title="@string/pref_qr_title"
+            android:summary="@string/pref_qr_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="DataMatrix"
+            android:title="@string/pref_datamatrix_title"
+            android:summary="@string/pref_datamatrix_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="Code39"
+            android:title="@string/pref_code39_title"
+            android:summary="@string/pref_code39_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="UPCEAN"
+            android:title="@string/pref_upcean_title"
+            android:summary="@string/pref_upcean_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="Code128"
+            android:title="@string/pref_code128_title"
+            android:summary="@string/pref_code128_summary"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="PDF"
+            android:title="@string/pref_pdf_title"
+            android:summary="@string/pref_pdf_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="Aztec"
+            android:title="@string/pref_aztec_title"
+            android:summary="@string/pref_aztec_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="Code93"
+            android:title="@string/pref_code93_title"
+            android:summary="@string/pref_code93_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="Code2of5"
+            android:title="@string/pref_code2of5_title"
+            android:summary="@string/pref_code2of5_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="Codabar"
+            android:title="@string/pref_codabar_title"
+            android:summary="@string/pref_codabar_summary"
+            android:defaultValue="false" />
+
+    </PreferenceCategory>
+
+    <!-- 扫描参数 -->
+    <PreferenceCategory
+        android:title="@string/pref_category_scan_settings">
+
+        <ListPreference
+            android:key="scanOrientations"
+            android:title="@string/pref_scan_orientations_title"
+            android:entries="@array/scan_orientations_entries"
+            android:entryValues="@array/scan_orientations_values"
+            android:defaultValue="Omni" />
+
+        <ListPreference
+            android:key="scanningResolution"
+            android:title="@string/pref_scanning_resolution_title"
+            android:entries="@array/scanning_resolution_entries"
+            android:entryValues="@array/scanning_resolution_values"
+            android:defaultValue="FullHD" />
+
+        <EditTextPreference
+            android:key="scannerDelay"
+            android:title="@string/pref_scanner_delay_title"
+            android:defaultValue="400"
+            android:inputType="number" />
+
+        <EditTextPreference
+            android:key="duplicatesTimeout"
+            android:title="@string/pref_duplicates_timeout_title"
+            android:defaultValue="400"
+            android:inputType="number" />
+
+        <ListPreference
+            android:key="effortLevel"
+            android:title="@string/pref_effort_level_title"
+            android:entries="@array/effort_level_entries"
+            android:entryValues="@array/effort_level_values"
+            android:defaultValue="Try Harder" />
+
+        <SwitchPreferenceCompat
+            android:key="useRapidScanning"
+            android:title="@string/pref_rapid_scanning_title"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="useFrontCamera"
+            android:title="@string/pref_front_camera_title"
+            android:defaultValue="false" />
+
+    </PreferenceCategory>
+
+    <!-- 通知设置 -->
+    <PreferenceCategory
+        android:title="@string/pref_category_notification">
+
+        <SwitchPreferenceCompat
+            android:key="notificationSoundEnabled"
+            android:title="@string/pref_notification_sound_title"
+            android:defaultValue="true" />
+
+        <EditTextPreference
+            android:key="notificationSoundFrequencyValue"
+            android:title="@string/pref_notification_frequency_title"
+            android:defaultValue="1000"
+            android:inputType="number" />
+
+        <EditTextPreference
+            android:key="notificationSoundLengthValue"
+            android:title="@string/pref_notification_length_title"
+            android:defaultValue="150"
+            android:inputType="number" />
+
+        <EditTextPreference
+            android:key="notificationSoundModulationValue"
+            android:title="@string/pref_notification_modulation_title"
+            android:defaultValue="0"
+            android:inputType="number" />
+
+        <EditTextPreference
+            android:key="notificationSoundVolumeValue"
+            android:title="@string/pref_notification_volume_title"
+            android:defaultValue="80"
+            android:inputType="number" />
+
+        <SwitchPreferenceCompat
+            android:key="notificationVibrateEnabled"
+            android:title="@string/pref_notification_vibrate_title"
+            android:defaultValue="true" />
+
+    </PreferenceCategory>
+
+    <!-- 结果处理 -->
+    <PreferenceCategory
+        android:title="@string/pref_category_result">
+
+        <SwitchPreferenceCompat
+            android:key="autoCopyToClipboard"
+            android:title="@string/pref_auto_copy_title"
+            android:summary="@string/pref_auto_copy_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="openUrlAutomatically"
+            android:title="@string/pref_open_url_title"
+            android:summary="@string/pref_open_url_summary"
+            android:defaultValue="false" />
+
+        <EditTextPreference
+            android:key="customWebhookUrl"
+            android:title="@string/pref_custom_webhook_title"
+            android:summary="@string/pref_custom_webhook_summary"
+            android:defaultValue="https://example.com/api?code={result}" />
+
+        <ListPreference
+            android:key="readStringEncoding"
+            android:title="@string/pref_encoding_title"
+            android:entries="@array/encoding_entries"
+            android:entryValues="@array/encoding_values"
+            android:defaultValue="UTF-8" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
