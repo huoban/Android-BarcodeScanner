@@ -2,6 +2,7 @@ package com.example.barcodescanner.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.media.Image
 import androidx.camera.core.ImageProxy
 import java.io.File
@@ -16,19 +17,22 @@ object ImageSaver {
 
     /**
      * 将相机帧保存为 WebP 图片
+     * @param context 上下文
      * @param imageProxy 相机帧数据
+     * @param rotationDegrees 旋转角度（来自 imageProxy.imageInfo.rotationDegrees）
      * @param timestamp 时间戳（用作文件名）
      * @return 保存后的文件绝对路径，失败返回 null
-     * TODO: 后续调整为保存当前相机预览流的实时帧，而非已处理的帧。需要看效果后确定
      */
-    fun save(context: Context, imageProxy: ImageProxy, timestamp: Long): String? {
+    fun save(context: Context, imageProxy: ImageProxy, rotationDegrees: Int, timestamp: Long): String? {
         return try {
             val mediaImage = imageProxy.image ?: return null
             val bitmap = yuvImageToBitmap(mediaImage)
+            val rotatedBitmap = rotateBitmap(bitmap, rotationDegrees)
+            bitmap.recycle()
             val fileName = "${timestamp}.$FORMAT"
             val file = getOutputFile(context, fileName)
-            saveWebp(bitmap, file)
-            bitmap.recycle()
+            saveWebp(rotatedBitmap, file)
+            rotatedBitmap.recycle()
             file.absolutePath
         } catch (e: Exception) {
             android.util.Log.e("ImageSaver", "保存图片失败", e)
@@ -67,6 +71,14 @@ object ImageSaver {
         }
 
         return Bitmap.createBitmap(argb, width, height, Bitmap.Config.ARGB_8888)
+    }
+
+    // 按角度旋转 Bitmap，使保存的图片方向与屏幕方向一致
+    private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
+        if (degrees == 0) return bitmap
+        val matrix = Matrix()
+        matrix.postRotate(degrees.toFloat())
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
     private fun getOutputFile(context: Context, fileName: String): File {

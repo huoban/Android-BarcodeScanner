@@ -188,6 +188,7 @@ class DisplayModeActivity : AppCompatActivity() {
                         imagePath = ImageSaver.save(
                             context = this@DisplayModeActivity,
                             imageProxy = imageProxy,
+                            rotationDegrees = imageProxy.imageInfo.rotationDegrees,
                             timestamp = result.scanTimestamp
                         )
                     } catch (e: Exception) {
