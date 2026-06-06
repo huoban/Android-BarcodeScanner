@@ -21,8 +21,4 @@ gradle/wrapper/gradle-wrapper.jar
 local.properties
 
 # Version auto-update (keep clean)
-*.baklocal.properties
-local.properties
-local.properties
-local.properties
-local.properties
+*.bak
