@@ -84,7 +84,7 @@
             android:title="@string/pref_scanning_resolution_title"
             android:entries="@array/scanning_resolution_entries"
             android:entryValues="@array/scanning_resolution_values"
-            android:defaultValue="FullHD" />
+            android:defaultValue="HD" />
 
         <ListPreference
             android:key="effortLevel"
