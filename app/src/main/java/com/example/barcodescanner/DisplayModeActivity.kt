@@ -3,8 +3,6 @@ package com.example.barcodescanner
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.DisplayMetrics
@@ -37,14 +35,10 @@ class DisplayModeActivity : AppCompatActivity() {
     private lateinit var database: AppDatabase
 
     private var isFlashOn = false
-    private var isRapidScanning = false
     private var isScanningPaused = false
     private var zoomLevel = 1.0f
     private var scanStartTime = 0L
     private var scanCount = 0
-    private var rapidScanDelayMs: Long = 1500L
-
-    private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val TAG = "DisplayModeActivity"
@@ -70,7 +64,6 @@ class DisplayModeActivity : AppCompatActivity() {
 
     private fun setupUI() {
         binding.rlResultView.visibility = View.GONE
-        binding.rlRapidText.visibility = View.GONE
 
         // 动态设置取景框尺寸：76mm × 130mm，根据屏幕分辨率等比缩放
         setupViewfinderSize()
@@ -79,14 +72,6 @@ class DisplayModeActivity : AppCompatActivity() {
         if (initialZoom > 0) {
             zoomLevel = initialZoom
         }
-
-        if (preferencesManager.getBoolean(PreferencesManager.KEY_USE_RAPID_SCANNING, false)) {
-            isRapidScanning = true
-            binding.rlRapidText.visibility = View.VISIBLE
-        }
-
-        // 从设置读取快速扫描延迟，默认 1500ms
-        rapidScanDelayMs = preferencesManager.getString(PreferencesManager.KEY_SCANNER_DELAY, "1500").toLongOrNull() ?: 1500L
 
         // 点击屏幕四周关闭结果对话框并恢复扫描
         binding.previewView.setOnTouchListener { _, event ->
@@ -123,11 +108,6 @@ class DisplayModeActivity : AppCompatActivity() {
 
         binding.historyButton.setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
-        }
-
-        binding.btnClearRapid.setOnClickListener {
-            binding.rapidTextView.text = ""
-            scanCount = 0
         }
 
         binding.btnSearch.setOnClickListener {
@@ -216,13 +196,6 @@ class DisplayModeActivity : AppCompatActivity() {
         }
 
         showResult(result)
-
-        if (isRapidScanning) {
-            appendToRapidText(result)
-            mainHandler.postDelayed({
-                hideResultView()
-            }, rapidScanDelayMs)
-        }
     }
 
     private fun submitToWebhook(scanResult: String) {
@@ -259,11 +232,6 @@ class DisplayModeActivity : AppCompatActivity() {
         binding.rlResultView.visibility = View.GONE
         isScanningPaused = false
         scanStartTime = System.currentTimeMillis()
-    }
-
-    private fun appendToRapidText(result: BarcodeResult) {
-        val newText = "[${scanCount}] ${result.barcodeType}: ${result.text}\n"
-        binding.rapidTextView.append(newText)
     }
 
     private fun saveToHistory(result: BarcodeResult) {
@@ -387,6 +355,5 @@ class DisplayModeActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         barcodeScannerManager.release()
-        mainHandler.removeCallbacksAndMessages(null)
     }
 }

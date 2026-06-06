@@ -14,9 +14,9 @@ import kotlinx.coroutines.tasks.await
 class BarcodeScannerManager(private val preferencesManager: PreferencesManager) {
 
     private var barcodeScanner: BarcodeScanner = createScanner(defaultFormats)
-    private var lastScanText: String = ""
-    private var lastScanTime: Long = 0
-    private var duplicatesTimeoutMs: Long = 400
+    private var confirmCount: Int = 0
+    private var pendingResult: BarcodeResult? = null
+    private val confirmThreshold: Int = 2
 
     companion object {
         val defaultFormats = setOf(
@@ -38,10 +38,8 @@ class BarcodeScannerManager(private val preferencesManager: PreferencesManager) 
 
     fun applySettings() {
         val enabledFormats = buildFormatSet()
-        val prefs = preferencesManager.getSharedPreferences()
         barcodeScanner.close()
         barcodeScanner = createScanner(enabledFormats)
-        duplicatesTimeoutMs = prefs.getString(PreferencesManager.KEY_DUPLICATES_TIMEOUT, "400")?.toLongOrNull() ?: 400
     }
 
     private fun buildFormatSet(): Set<Int> {
@@ -100,10 +98,18 @@ class BarcodeScannerManager(private val preferencesManager: PreferencesManager) 
         return try {
             val barcodes = barcodeScanner.process(image).await()
             val first = barcodes.firstOrNull() ?: return null
-            if (isDuplicate(first.rawValue ?: "")) return null
-            toBarcodeResult(first)
+            val text = first.rawValue ?: ""
+
+            // 控制字符过滤：拒绝含不可打印字符的结果
+            if (!isValidBarcodeText(text)) {
+                resetPendingResult()
+                return null
+            }
+
+            toBarcodeResult(first).let { result ->
+                confirmResult(result)
+            }
         } catch (e: IllegalArgumentException) {
-            // 未启用任何条码格式时，ML Kit 会抛出参数异常
             null
         } catch (e: Exception) {
             null
@@ -116,23 +122,51 @@ class BarcodeScannerManager(private val preferencesManager: PreferencesManager) 
         return try {
             val barcodes = barcodeScanner.process(image).await()
             val first = barcodes.firstOrNull() ?: return null
-            if (isDuplicate(first.rawValue ?: "")) return null
+            val text = first.rawValue ?: ""
+
+            // 控制字符过滤：拒绝含不可打印字符的结果
+            if (!isValidBarcodeText(text)) {
+                return null
+            }
+
             toBarcodeResult(first)
         } catch (e: IllegalArgumentException) {
-            // 未启用任何条码格式时，ML Kit 会抛出参数异常
             null
         } catch (e: Exception) {
             null
         }
     }
 
-    private fun isDuplicate(text: String): Boolean {
-        if (duplicatesTimeoutMs <= 0) return false
-        val now = System.currentTimeMillis()
-        if (text == lastScanText && (now - lastScanTime) < duplicatesTimeoutMs) return true
-        lastScanText = text
-        lastScanTime = now
-        return false
+    /** 多帧一致性校验：连续 confirmThreshold 帧结果相同才确认返回 */
+    private fun confirmResult(result: BarcodeResult): BarcodeResult? {
+        val currentText = result.text
+        val pendingText = pendingResult?.text
+
+        if (currentText == pendingText) {
+            confirmCount++
+            if (confirmCount >= confirmThreshold) {
+                // 连续多帧一致，确认返回
+                pendingResult = null
+                confirmCount = 0
+                return result
+            }
+        } else {
+            // 结果变化，重置计数
+            pendingResult = result
+            confirmCount = 1
+        }
+        return null
+    }
+
+    /** 重置待确认结果（用于控制字符过滤后重置状态） */
+    private fun resetPendingResult() {
+        pendingResult = null
+        confirmCount = 0
+    }
+
+    /** 验证条码文本是否合法：拒绝含控制字符的结果 */
+    private fun isValidBarcodeText(text: String): Boolean {
+        return text.none { it.code < 32 || it.code == 127 }
     }
 
     private fun toBarcodeResult(barcode: Barcode): BarcodeResult {

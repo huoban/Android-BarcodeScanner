@@ -22,10 +22,7 @@ class PreferencesManager(context: Context) {
 
         const val KEY_SCAN_ORIENTATIONS = "scanOrientations"
         const val KEY_SCANNING_RESOLUTION = "scanningResolution"
-        const val KEY_SCANNER_DELAY = "scannerDelay"
-        const val KEY_DUPLICATES_TIMEOUT = "duplicatesTimeout"
         const val KEY_EFFORT_LEVEL = "effortLevel"
-        const val KEY_USE_RAPID_SCANNING = "useRapidScanning"
         const val KEY_USE_FRONT_CAMERA = "useFrontCamera"
         const val KEY_INITIAL_ZOOM = "initialZoom"
 

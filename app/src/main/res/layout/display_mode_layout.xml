@@ -71,41 +71,6 @@
             app:tint="@color/white" />
     </LinearLayout>
 
-    <!-- 快速扫描文本区域 -->
-    <RelativeLayout
-        android:id="@+id/rlRapidText"
-        android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:layout_alignParentBottom="true"
-        android:layout_margin="16dp"
-        android:background="@color/result_background"
-        android:visibility="gone">
-
-        <ScrollView
-            android:id="@+id/scrollRapidText"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_above="@id/btnClearRapid"
-            android:layout_marginBottom="8dp">
-
-            <TextView
-                android:id="@+id/rapidTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/white"
-                android:textSize="14sp"
-                android:padding="8dp" />
-        </ScrollView>
-
-        <Button
-            android:id="@+id/btnClearRapid"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_centerHorizontal="true"
-            android:text="@string/btn_clear" />
-    </RelativeLayout>
-
     <!-- 扫描结果覆盖层 -->
     <RelativeLayout
         android:id="@+id/rlResultView"
