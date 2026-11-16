@@ -33,14 +33,14 @@ class ImagePreviewActivity : AppCompatActivity() {
 
         val imagePath = intent.getStringExtra(EXTRA_IMAGE_PATH)
         if (imagePath.isNullOrEmpty()) {
-            Toast.makeText(this, "图片路径为空", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.image_path_empty, Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
         val file = File(imagePath)
         if (!file.exists()) {
-            Toast.makeText(this, "图片文件不存在", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.image_file_not_found, Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -55,7 +55,7 @@ class ImagePreviewActivity : AppCompatActivity() {
         if (bitmap != null) {
             touchImageView.setImageBitmap(bitmap)
         } else {
-            Toast.makeText(this, "图片加载失败", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.image_load_failed, Toast.LENGTH_SHORT).show()
             finish()
         }
     }

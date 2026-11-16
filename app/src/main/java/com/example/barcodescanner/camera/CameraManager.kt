@@ -25,13 +25,20 @@ class CameraManager(
     private var imageAnalysis: ImageAnalysis? = null
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
+    @Volatile
+    private var isStopped = false
+
     companion object {
         private const val TAG = "CameraManager"
     }
 
     fun startCamera(useFrontCamera: Boolean = false) {
+        if (isStopped) return
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
+            // 异步回调期间页面可能已经停止，避免停止后重新绑定
+            if (isStopped) return@addListener
             try {
                 cameraProvider = cameraProviderFuture.get()
                 bindCameraUseCases(useFrontCamera)
@@ -42,6 +49,7 @@ class CameraManager(
     }
 
     private fun bindCameraUseCases(useFrontCamera: Boolean) {
+        if (isStopped) return
         val provider = cameraProvider ?: return
         provider.unbindAll()
 
@@ -60,7 +68,11 @@ class CameraManager(
             .build()
             .also { analyzer ->
                 analyzer.setAnalyzer(cameraExecutor) { imageProxy ->
-                    onFrameAvailable(imageProxy)
+                    if (isStopped) {
+                        imageProxy.close()
+                    } else {
+                        onFrameAvailable(imageProxy)
+                    }
                 }
             }
 
@@ -72,10 +84,15 @@ class CameraManager(
         }
     }
 
-    fun toggleFlash(enabled: Boolean) {
-        if (camera?.cameraInfo?.hasFlashUnit() == true) {
-            camera?.cameraControl?.enableTorch(enabled)
-        }
+    /**
+     * 切换闪光灯。
+     * @return true 表示设备支持并已执行，false 表示当前相机不支持闪光灯
+     */
+    fun toggleFlash(enabled: Boolean): Boolean {
+        val camera = this.camera ?: return false
+        if (!camera.cameraInfo.hasFlashUnit()) return false
+        camera.cameraControl.enableTorch(enabled)
+        return true
     }
 
     fun setZoomLevel(level: Float) {
@@ -93,8 +110,22 @@ class CameraManager(
         return camera?.cameraInfo?.zoomState?.value?.minZoomRatio ?: 1.0f
     }
 
+    /** 幂等停止：重复调用不会重复释放线程池 */
     fun stopCamera() {
-        cameraProvider?.unbindAll()
+        if (isStopped) return
+        isStopped = true
+
+        try {
+            imageAnalysis?.clearAnalyzer()
+            cameraProvider?.unbindAll()
+        } catch (e: Exception) {
+            Log.w(TAG, "停止摄像头失败", e)
+        }
+
+        imageAnalysis = null
+        cameraProvider = null
+        camera = null
         cameraExecutor.shutdown()
+        Log.d(TAG, "摄像头已停止")
     }
 }

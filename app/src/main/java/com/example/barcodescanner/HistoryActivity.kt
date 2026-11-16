@@ -1,15 +1,16 @@
 package com.example.barcodescanner
 
-import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.lifecycleScope
@@ -18,10 +19,20 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.barcodescanner.data.database.AppDatabase
 import com.example.barcodescanner.data.database.entities.HistoryEntity
 import com.example.barcodescanner.utils.Util
+import java.io.File
+import java.util.Calendar
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HistoryActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "HistoryActivity"
+        private val RETENTION_DAYS = intArrayOf(15, 30, 60, 90, 180)
+    }
 
     private lateinit var database: AppDatabase
     private lateinit var adapter: HistoryAdapter
@@ -72,33 +83,127 @@ class HistoryActivity : AppCompatActivity() {
     }
 
     private fun showDeleteDialog() {
-        val options = arrayOf("删除15天前", "删除30天前", "删除全部")
+        val options = RETENTION_DAYS.map {
+            getString(R.string.history_delete_older_than_days, it)
+        } + getString(R.string.history_delete_all)
+
         AlertDialog.Builder(this)
-            .setTitle("删除历史记录")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> deleteOlderThanDays(15)
-                    1 -> deleteOlderThanDays(30)
-                    2 -> deleteAllHistory()
+            .setTitle(R.string.history_delete_title)
+            .setItems(options.toTypedArray()) { _, which ->
+                if (which < RETENTION_DAYS.size) {
+                    confirmDeleteOlderThan(RETENTION_DAYS[which])
+                } else {
+                    confirmDeleteAll()
                 }
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
+    private fun confirmDeleteOlderThan(days: Int) {
+        val keepDays = days - 1
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.history_delete_confirm_title_days, days))
+            .setMessage(getString(R.string.history_delete_older_than_message, days, keepDays))
+            .setPositiveButton(R.string.history_delete_confirm) { _, _ ->
+                deleteOlderThanDays(days)
+            }
+            .setNegativeButton(R.string.history_delete_cancel, null)
+            .show()
+    }
+
+    private fun confirmDeleteAll() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.history_delete_all_confirm_title)
+            .setMessage(R.string.history_delete_all_message)
+            .setPositiveButton(R.string.history_delete_confirm) { _, _ ->
+                deleteAllHistory()
+            }
+            .setNegativeButton(R.string.history_delete_cancel, null)
+            .show()
+    }
+
+    /**
+     * 保留今天及之前 (days - 1) 天，共 days 天的记录。
+     * 返回 cutoff 时间戳：早于该时间的记录将被删除。
+     */
+    private fun retentionCutoff(days: Int): Long {
+        val calendar = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -(days - 1))
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        return calendar.timeInMillis
+    }
+
     private fun deleteOlderThanDays(days: Int) {
-        val cutoffTimestamp = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
+        val cutoff = retentionCutoff(days)
         lifecycleScope.launch {
-            database.historyDao().deleteOlderThan(cutoffTimestamp)
-            Toast.makeText(this@HistoryActivity, "已删除${days}天前的记录", Toast.LENGTH_SHORT).show()
+            try {
+                val deletedCount = withContext(Dispatchers.IO) {
+                    val dao = database.historyDao()
+                    val records = dao.getOlderThan(cutoff)
+                    dao.deleteOlderThan(cutoff)
+                    deleteImageFiles(records)
+                    records.size
+                }
+                Toast.makeText(
+                    this@HistoryActivity,
+                    getString(R.string.history_deleted_days, days, deletedCount),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "删除历史记录失败", e)
+                Toast.makeText(this@HistoryActivity, R.string.history_delete_failed, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
     private fun deleteAllHistory() {
         lifecycleScope.launch {
-            database.historyDao().deleteAll()
-            Toast.makeText(this@HistoryActivity, "已清空全部记录", Toast.LENGTH_SHORT).show()
+            try {
+                val deletedCount = withContext(Dispatchers.IO) {
+                    val dao = database.historyDao()
+                    val records = dao.getAllOnce()
+                    dao.deleteAll()
+                    deleteImageFiles(records)
+                    records.size
+                }
+                Toast.makeText(
+                    this@HistoryActivity,
+                    getString(R.string.history_deleted_all, deletedCount),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "清空历史记录失败", e)
+                Toast.makeText(this@HistoryActivity, R.string.history_delete_failed, Toast.LENGTH_SHORT).show()
+            }
         }
+    }
+
+    /** 删除历史记录对应的截图，避免图片文件长期残留。 */
+    private fun deleteImageFiles(records: List<HistoryEntity>) {
+        val imagesDir = File(filesDir, "images").canonicalFile
+        records.asSequence()
+            .mapNotNull { it.imagePath }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .forEach { path ->
+                try {
+                    val file = File(path).canonicalFile
+                    if (file.parentFile == imagesDir && file.exists() && !file.delete()) {
+                        Log.w(TAG, "截图删除失败: $path")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "截图删除异常: $path", e)
+                }
+            }
     }
 
     private fun setupRecyclerView() {
@@ -141,7 +246,7 @@ class HistoryActivity : AppCompatActivity() {
 
     private fun openImagePreview(entity: HistoryEntity) {
         if (entity.imagePath.isNullOrEmpty()) {
-            Toast.makeText(this, "无图片记录", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.no_image_record, Toast.LENGTH_SHORT).show()
             return
         }
         val intent = Intent(this, ImagePreviewActivity::class.java).apply {
@@ -179,7 +284,11 @@ class HistoryAdapter(
         fun bind(entity: HistoryEntity) {
             val text1 = itemView.findViewById<TextView>(android.R.id.text1)
             val text2 = itemView.findViewById<TextView>(android.R.id.text2)
-            text1.text = "${entity.barcodeType}: ${entity.resultText}"
+            text1.text = itemView.context.getString(
+                R.string.history_item_title,
+                entity.barcodeType,
+                entity.resultText
+            )
             text2.text = Util.formatTimestamp(entity.timestamp)
             itemView.setOnClickListener { onItemClick(entity) }
         }

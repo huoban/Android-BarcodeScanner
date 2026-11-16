@@ -1,10 +1,10 @@
 package com.example.barcodescanner
 
 import android.os.Bundle
-import android.view.KeyEvent
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.ProgressBar
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 
@@ -21,6 +21,9 @@ class WebViewActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        webView = findViewById(R.id.webview)
+        progressBar = findViewById(R.id.progressBar)
+
         toolbar.setNavigationOnClickListener {
             if (webView.canGoBack()) {
                 webView.goBack()
@@ -29,8 +32,17 @@ class WebViewActivity : AppCompatActivity() {
             }
         }
 
-        webView = findViewById(R.id.webview)
-        progressBar = findViewById(R.id.progressBar)
+        // 统一处理系统返回键：优先在 WebView 内后退
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webView.canGoBack()) {
+                    webView.goBack()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
 
         val url = intent.getStringExtra("url") ?: "about:blank"
         supportActionBar?.subtitle = url
@@ -50,19 +62,6 @@ class WebViewActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 progressBar.visibility = android.view.View.GONE
-            }
-        }
-
-        webView.setOnKeyListener { _, keyCode, event ->
-            if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
-                if (webView.canGoBack()) {
-                    webView.goBack()
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
             }
         }
     }
