@@ -1,49 +1,79 @@
 package com.example.barcodescanner
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.barcodescanner.data.PreferencesManager
 import com.example.barcodescanner.data.database.AppDatabase
 import com.example.barcodescanner.data.database.entities.HistoryEntity
 import com.example.barcodescanner.utils.Util
 import java.io.File
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
 
 class HistoryActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "HistoryActivity"
         private val RETENTION_DAYS = intArrayOf(15, 30, 60, 90, 180)
+        private const val REMOTE_QUERY_DEBOUNCE_MS = 3000L
+        private const val RESULT_PLACEHOLDER = "{result}"
+        private const val DEFAULT_REMOTE_QUERY_URL = "https://example.com/api?cxid="
     }
 
     private lateinit var database: AppDatabase
+    private lateinit var preferencesManager: PreferencesManager
     private lateinit var adapter: HistoryAdapter
-    private var searchJob: kotlinx.coroutines.Job? = null
+    private var searchJob: Job? = null
+    private var remoteQueryJob: Job? = null
+    private var remoteRequestGeneration = 0
     private lateinit var etSearch: EditText
+
+    private var localItems: List<HistoryEntity> = emptyList()
+    private var remoteItems: List<HistoryListItem.Remote> = emptyList()
+    private var currentRemoteQuery = ""
+
+    private val httpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .build()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_history)
 
         database = (application as App).database
+        preferencesManager = (application as App).preferencesManager
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -54,6 +84,8 @@ class HistoryActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
+        setupRecyclerView()
+
         etSearch = findViewById<EditText>(R.id.etSearch)
         etSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -63,7 +95,6 @@ class HistoryActivity : AppCompatActivity() {
             }
         })
 
-        setupRecyclerView()
         loadHistory(null)
     }
 
@@ -219,24 +250,178 @@ class HistoryActivity : AppCompatActivity() {
     }
 
     private fun loadHistory(query: String?) {
+        val remoteQuery = query?.trim().orEmpty()
+        currentRemoteQuery = remoteQuery
+
         searchJob?.cancel()
+        cancelRemoteQuery()
+
         searchJob = lifecycleScope.launch {
             val flow = if (query.isNullOrBlank()) {
                 database.historyDao().getAll()
             } else {
                 database.historyDao().search("%${query}%")
             }
+            var remoteScheduled = false
             flow.collectLatest { historyList ->
-                adapter.submitList(historyList)
-                val tvNoHistory = findViewById<TextView>(R.id.tvNoHistory)
-                if (historyList.isEmpty()) {
-                    tvNoHistory.visibility = android.view.View.VISIBLE
-                    findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.rvHistory).visibility = android.view.View.GONE
-                } else {
-                    tvNoHistory.visibility = android.view.View.GONE
-                    findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.rvHistory).visibility = android.view.View.VISIBLE
+                localItems = historyList
+                renderItems()
+
+                if (!remoteScheduled) {
+                    remoteScheduled = true
+                    if (remoteQuery.isNotEmpty()) {
+                        scheduleRemoteQuery(remoteQuery)
+                    }
                 }
             }
+        }
+    }
+
+    /** 取消上一次远程查询；已经返回的旧结果不会覆盖当前搜索。 */
+    private fun cancelRemoteQuery() {
+        remoteQueryJob?.cancel()
+        remoteQueryJob = null
+        remoteRequestGeneration++
+        if (remoteItems.isNotEmpty()) {
+            remoteItems = emptyList()
+            renderItems()
+        }
+    }
+
+    /**
+     * 输入停止 3 秒后再发起远程查询；连续输入时只保留最后一次查询结果。
+     */
+    private fun scheduleRemoteQuery(query: String) {
+        if (query.isBlank()) return
+        if (!preferencesManager.getBoolean(PreferencesManager.KEY_REMOTE_QUERY_ENABLED, false)) {
+            return
+        }
+
+        val generation = ++remoteRequestGeneration
+        val failureText = getString(R.string.remote_query_failed)
+        val noMatchText = getString(R.string.remote_query_no_match)
+        val missingUrlText = getString(R.string.remote_query_url_missing)
+
+        remoteQueryJob = lifecycleScope.launch {
+            delay(REMOTE_QUERY_DEBOUNCE_MS)
+            if (!isActive || generation != remoteRequestGeneration || currentRemoteQuery != query) {
+                return@launch
+            }
+
+            val url = buildRemoteQueryUrl(query)
+            if (url.isBlank()) {
+                remoteItems = listOf(HistoryListItem.Remote(missingUrlText, null))
+                renderItems()
+                return@launch
+            }
+
+            val result = withContext(Dispatchers.IO) {
+                fetchRemoteQuery(url, failureText, noMatchText)
+            }
+            if (!isActive || generation != remoteRequestGeneration || currentRemoteQuery != query) {
+                return@launch
+            }
+            remoteItems = result
+            renderItems()
+        }
+    }
+
+    private fun buildRemoteQueryUrl(query: String): String {
+        val baseUrl = preferencesManager.getString(
+            PreferencesManager.KEY_REMOTE_QUERY_URL,
+            DEFAULT_REMOTE_QUERY_URL
+        ).trim()
+        if (baseUrl.isEmpty()) return ""
+
+        val encodedQuery = Uri.encode(query)
+        return if (baseUrl.contains(RESULT_PLACEHOLDER)) {
+            baseUrl.replace(RESULT_PLACEHOLDER, encodedQuery)
+        } else {
+            baseUrl + encodedQuery
+        }
+    }
+
+    private fun fetchRemoteQuery(
+        url: String,
+        failureText: String,
+        noMatchText: String
+    ): List<HistoryListItem.Remote> {
+        return try {
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .header("Accept", "application/json")
+                .build()
+
+            httpClient.newCall(request).execute().use { response ->
+                val body = response.body?.string()
+                if (body.isNullOrBlank()) {
+                    listOf(HistoryListItem.Remote(failureText, null))
+                } else {
+                    parseRemoteResponse(body, failureText, noMatchText)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "远程查询失败", e)
+            listOf(HistoryListItem.Remote(failureText, null))
+        }
+    }
+
+    /**
+     * 只使用 msg 和 data，忽略 code。
+     * data 为空时只显示 msg；有数据时每条显示 "msg + id" 和 timestamp。
+     */
+    private fun parseRemoteResponse(
+        body: String,
+        failureText: String,
+        noMatchText: String
+    ): List<HistoryListItem.Remote> {
+        return try {
+            val json = JSONObject(body)
+            val msg = json.optString("msg").trim()
+            val data = json.optJSONArray("data")
+
+            if (data == null || data.length() == 0) {
+                return listOf(HistoryListItem.Remote(msg.ifBlank { noMatchText }, null))
+            }
+
+            val rows = ArrayList<HistoryListItem.Remote>(data.length())
+            for (i in 0 until data.length()) {
+                val item = data.optJSONObject(i) ?: continue
+                val id = item.optString("id").trim()
+                val timestamp = item.optString("timestamp").trim()
+                if (id.isBlank() && timestamp.isBlank()) continue
+
+                val title = if (msg.isEmpty()) id else msg + id
+                rows.add(HistoryListItem.Remote(title, timestamp.ifBlank { null }))
+            }
+
+            if (rows.isEmpty()) {
+                listOf(HistoryListItem.Remote(msg.ifBlank { noMatchText }, null))
+            } else {
+                rows
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "远程查询结果解析失败", e)
+            listOf(HistoryListItem.Remote(failureText, null))
+        }
+    }
+
+    private fun renderItems() {
+        val items = ArrayList<HistoryListItem>(localItems.size + remoteItems.size)
+        localItems.forEach { items.add(HistoryListItem.Local(it)) }
+        items.addAll(remoteItems)
+
+        adapter.submitList(items)
+
+        val recyclerView = findViewById<RecyclerView>(R.id.rvHistory)
+        val tvNoHistory = findViewById<TextView>(R.id.tvNoHistory)
+        if (items.isEmpty()) {
+            tvNoHistory.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+        } else {
+            tvNoHistory.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
         }
     }
 
@@ -256,13 +441,18 @@ class HistoryActivity : AppCompatActivity() {
     }
 }
 
+sealed class HistoryListItem {
+    data class Local(val entity: HistoryEntity) : HistoryListItem()
+    data class Remote(val title: String, val timestamp: String?) : HistoryListItem()
+}
+
 class HistoryAdapter(
     private val onItemClick: (HistoryEntity) -> Unit
-) : androidx.recyclerview.widget.RecyclerView.Adapter<HistoryAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<HistoryAdapter.ViewHolder>() {
 
-    private var items = listOf<HistoryEntity>()
+    private var items = listOf<HistoryListItem>()
 
-    fun submitList(newItems: List<HistoryEntity>) {
+    fun submitList(newItems: List<HistoryListItem>) {
         items = newItems
         notifyDataSetChanged()
     }
@@ -274,23 +464,53 @@ class HistoryAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val item = items[position]
-        holder.bind(item)
+        holder.bind(items[position])
     }
 
     override fun getItemCount() = items.size
 
-    inner class ViewHolder(itemView: android.view.View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
-        fun bind(entity: HistoryEntity) {
-            val text1 = itemView.findViewById<TextView>(android.R.id.text1)
-            val text2 = itemView.findViewById<TextView>(android.R.id.text2)
-            text1.text = itemView.context.getString(
-                R.string.history_item_title,
-                entity.barcodeType,
-                entity.resultText
-            )
-            text2.text = Util.formatTimestamp(entity.timestamp)
-            itemView.setOnClickListener { onItemClick(entity) }
+    inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val text1 = itemView.findViewById<TextView>(android.R.id.text1)
+        private val text2 = itemView.findViewById<TextView>(android.R.id.text2)
+        private val localPrimaryColor = text1.currentTextColor
+        private val localSecondaryColor = text2.currentTextColor
+        private val remoteColor = ContextCompat.getColor(itemView.context, R.color.remote_result_text)
+
+        fun bind(item: HistoryListItem) {
+            val context = itemView.context
+            when (item) {
+                is HistoryListItem.Local -> {
+                    val entity = item.entity
+                    text1.setTextColor(localPrimaryColor)
+                    text2.setTextColor(localSecondaryColor)
+                    text1.text = context.getString(
+                        R.string.history_item_title,
+                        entity.barcodeType,
+                        entity.resultText
+                    )
+                    text2.text = Util.formatTimestamp(entity.timestamp)
+                    text2.visibility = View.VISIBLE
+                    itemView.isClickable = true
+                    itemView.isFocusable = true
+                    itemView.setOnClickListener { onItemClick(entity) }
+                }
+
+                is HistoryListItem.Remote -> {
+                    text1.setTextColor(remoteColor)
+                    text2.setTextColor(remoteColor)
+                    text1.text = item.title
+                    if (item.timestamp.isNullOrBlank()) {
+                        text2.text = null
+                        text2.visibility = View.GONE
+                    } else {
+                        text2.text = item.timestamp
+                        text2.visibility = View.VISIBLE
+                    }
+                    itemView.setOnClickListener(null)
+                    itemView.isClickable = false
+                    itemView.isFocusable = false
+                }
+            }
         }
     }
 }
