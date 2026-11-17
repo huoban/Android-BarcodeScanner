@@ -22,11 +22,12 @@
             android:padding="16dp">
 
             <ImageView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
                 android:layout_gravity="center"
                 android:contentDescription="@string/app_name"
-                android:src="@android:drawable/ic_menu_camera" />
+                android:scaleType="fitCenter"
+                android:src="@drawable/splash_logo" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -56,12 +57,26 @@
                 android:textSize="14sp" />
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="基于 Google ML Kit 开源扫码引擎构建\n支持 15+ 种条码格式识别"
-                android:textSize="14sp"
-                android:lineSpacingMultiplier="1.5" />
+                android:lineSpacingMultiplier="1.5"
+                android:text="@string/about_description"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tv_project_url"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="24dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="8dp"
+                android:text="@string/about_project_url"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="14sp" />
 
         </LinearLayout>
     </ScrollView>

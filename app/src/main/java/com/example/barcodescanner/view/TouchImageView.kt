@@ -8,9 +8,14 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import androidx.appcompat.widget.AppCompatImageView
+import kotlin.math.abs
+import kotlin.math.min
 
 /**
- * 支持手势拖动和缩放的图片查看控件
+ * 支持手势拖动和缩放的图片查看控件。
+ *
+ * 默认将图片完整缩放并居中显示；只有放大后才允许拖动，
+ * 缩放或拖动结束后会自动校正边界，避免图片被拖出视野。
  */
 class TouchImageView @JvmOverloads constructor(
     context: Context,
@@ -19,9 +24,9 @@ class TouchImageView @JvmOverloads constructor(
 ) : AppCompatImageView(context, attrs, defStyleAttr) {
 
     companion object {
-        private const val MIN_ZOOM = 1.0f
-        private const val MAX_ZOOM = 5.0f
-        private const val DOUBLE_TAP_ZOOM = 2.5f
+        private const val MAX_ZOOM_FACTOR = 5.0f
+        private const val DOUBLE_TAP_ZOOM_FACTOR = 2.5f
+        private const val EPSILON = 0.01f
     }
 
     private val matrix = Matrix()
@@ -29,7 +34,11 @@ class TouchImageView @JvmOverloads constructor(
     var isZoomed = false
         private set
 
-    private var scaleFactor = 1.0f
+    /** 图片完整显示时的缩放比例 */
+    private var baseScale = 1.0f
+
+    /** 当前实际缩放比例 */
+    private var currentScale = 1.0f
 
     // 手势检测
     private val scaleDetector by lazy {
@@ -47,9 +56,7 @@ class TouchImageView @JvmOverloads constructor(
 
     override fun setImageDrawable(drawable: Drawable?) {
         super.setImageDrawable(drawable)
-        if (viewWidth > 0 && viewHeight > 0) {
-            fitImageToView()
-        }
+        fitImageToView()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -59,24 +66,61 @@ class TouchImageView @JvmOverloads constructor(
         fitImageToView()
     }
 
+    /** 默认完整显示并居中（等比缩放，不裁剪） */
     private fun fitImageToView() {
         val drawable = drawable ?: return
+        if (viewWidth <= 0f || viewHeight <= 0f) return
+
         drawableWidth = drawable.intrinsicWidth.toFloat()
         drawableHeight = drawable.intrinsicHeight.toFloat()
+        if (drawableWidth <= 0f || drawableHeight <= 0f) return
 
-        if (drawableWidth <= 0 || drawableHeight <= 0) return
+        baseScale = min(viewWidth / drawableWidth, viewHeight / drawableHeight)
+        currentScale = baseScale
+        resetToFit()
+    }
 
-        val widthScale = viewWidth / drawableWidth
-        val heightScale = viewHeight / drawableHeight
-        scaleFactor = kotlin.math.min(widthScale, heightScale)
+    /** 恢复到“完整显示 + 居中”状态 */
+    private fun resetToFit() {
+        val scaledWidth = drawableWidth * currentScale
+        val scaledHeight = drawableHeight * currentScale
 
-        matrix.reset()
-        val tx = (viewWidth - drawableWidth * scaleFactor) / 2f
-        val ty = (viewHeight - drawableHeight * scaleFactor) / 2f
-        matrix.postTranslate(tx, ty)
-        matrix.postScale(scaleFactor, scaleFactor, viewWidth / 2f, viewHeight / 2f)
-        imageMatrix = matrix
+        // 先缩放，再平移，保证平移量不会被再次缩放
+        matrix.setScale(currentScale, currentScale)
+        matrix.postTranslate(
+            (viewWidth - scaledWidth) / 2f,
+            (viewHeight - scaledHeight) / 2f
+        )
+
         isZoomed = false
+        imageMatrix = matrix
+    }
+
+    /** 校正平移：小于视图时居中，大于视图时不允许出现空白边 */
+    private fun constrainMatrix() {
+        if (drawableWidth <= 0f || drawableHeight <= 0f) return
+
+        val values = FloatArray(9)
+        matrix.getValues(values)
+        val scaledWidth = drawableWidth * currentScale
+        val scaledHeight = drawableHeight * currentScale
+        val transX = values[Matrix.MTRANS_X]
+        val transY = values[Matrix.MTRANS_Y]
+
+        val targetX = if (scaledWidth <= viewWidth) {
+            (viewWidth - scaledWidth) / 2f
+        } else {
+            transX.coerceIn(viewWidth - scaledWidth, 0f)
+        }
+
+        val targetY = if (scaledHeight <= viewHeight) {
+            (viewHeight - scaledHeight) / 2f
+        } else {
+            transY.coerceIn(viewHeight - scaledHeight, 0f)
+        }
+
+        matrix.postTranslate(targetX - transX, targetY - transY)
+        imageMatrix = matrix
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -86,79 +130,24 @@ class TouchImageView @JvmOverloads constructor(
         if (event.actionMasked == MotionEvent.ACTION_UP ||
             event.actionMasked == MotionEvent.ACTION_CANCEL
         ) {
-            rectify()
+            constrainMatrix()
         }
         return true
     }
 
-    private fun rectify() {
-        if (scaleFactor <= MIN_ZOOM) {
-            scaleFactor = MIN_ZOOM
-            matrix.reset()
-            val tx = (viewWidth - drawableWidth * scaleFactor) / 2f
-            val ty = (viewHeight - drawableHeight * scaleFactor) / 2f
-            matrix.postTranslate(tx, ty)
-            matrix.postScale(scaleFactor, scaleFactor, viewWidth / 2f, viewHeight / 2f)
-            isZoomed = false
-        } else {
-            val matrixLeft = getMatrixLeft()
-            val matrixRight = getMatrixRight()
-            val matrixTop = getMatrixTop()
-            val matrixBottom = getMatrixBottom()
-
-            if (matrixRight < viewWidth) {
-                val offset = viewWidth - matrixRight
-                matrix.postTranslate(offset / 2f, 0f)
-            } else if (matrixLeft > 0) {
-                matrix.postTranslate(-matrixLeft / 2f, 0f)
-            }
-
-            if (matrixBottom < viewHeight) {
-                val offset = viewHeight - matrixBottom
-                matrix.postTranslate(0f, offset / 2f)
-            } else if (matrixTop > 0) {
-                matrix.postTranslate(0f, -matrixTop / 2f)
-            }
-
-            isZoomed = true
-        }
-        imageMatrix = matrix
-    }
-
-    private fun getMatrixLeft(): Float {
-        val values = FloatArray(9)
-        matrix.getValues(values)
-        return values[Matrix.MTRANS_X]
-    }
-
-    private fun getMatrixRight(): Float {
-        val values = FloatArray(9)
-        matrix.getValues(values)
-        return values[Matrix.MTRANS_X] + drawableWidth * scaleFactor
-    }
-
-    private fun getMatrixTop(): Float {
-        val values = FloatArray(9)
-        matrix.getValues(values)
-        return values[Matrix.MTRANS_Y]
-    }
-
-    private fun getMatrixBottom(): Float {
-        val values = FloatArray(9)
-        matrix.getValues(values)
-        return values[Matrix.MTRANS_Y] + drawableHeight * scaleFactor
-    }
-
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val factor = detector.scaleFactor
-            val newScale = scaleFactor * factor
+            if (drawableWidth <= 0f || drawableHeight <= 0f) return false
 
-            if (newScale >= MIN_ZOOM && newScale <= MAX_ZOOM) {
-                matrix.postScale(factor, factor, detector.focusX, detector.focusY)
-                scaleFactor = newScale
-                imageMatrix = matrix
-            }
+            val targetScale = (currentScale * detector.scaleFactor)
+                .coerceIn(baseScale, baseScale * MAX_ZOOM_FACTOR)
+            val actualFactor = targetScale / currentScale
+            if (abs(actualFactor - 1f) < 0.0001f) return true
+
+            matrix.postScale(actualFactor, actualFactor, detector.focusX, detector.focusY)
+            currentScale = targetScale
+            isZoomed = currentScale > baseScale + EPSILON
+            imageMatrix = matrix
             return true
         }
     }
@@ -174,28 +163,29 @@ class TouchImageView @JvmOverloads constructor(
             distanceX: Float,
             distanceY: Float
         ): Boolean {
-            if (isZoomed) {
-                matrix.postTranslate(-distanceX, -distanceY)
-                imageMatrix = matrix
-            }
+            // 默认适配状态下图片完整可见，不需要拖动
+            if (currentScale <= baseScale + EPSILON) return false
+
+            matrix.postTranslate(-distanceX, -distanceY)
+            constrainMatrix()
             return true
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            if (isZoomed) {
-                scaleFactor = MIN_ZOOM
-                matrix.reset()
-                val tx = (viewWidth - drawableWidth * scaleFactor) / 2f
-                val ty = (viewHeight - drawableHeight * scaleFactor) / 2f
-                matrix.postTranslate(tx, ty)
-                matrix.postScale(scaleFactor, scaleFactor, viewWidth / 2f, viewHeight / 2f)
-                isZoomed = false
+            if (currentScale > baseScale + EPSILON) {
+                // 已放大：恢复完整显示并居中
+                currentScale = baseScale
+                resetToFit()
             } else {
-                matrix.postScale(DOUBLE_TAP_ZOOM, DOUBLE_TAP_ZOOM, e.x, e.y)
-                scaleFactor *= DOUBLE_TAP_ZOOM
+                // 默认状态：以双击位置为中心放大
+                val targetScale = (baseScale * DOUBLE_TAP_ZOOM_FACTOR)
+                    .coerceAtMost(baseScale * MAX_ZOOM_FACTOR)
+                val factor = targetScale / currentScale
+                matrix.postScale(factor, factor, e.x, e.y)
+                currentScale = targetScale
                 isZoomed = true
+                constrainMatrix()
             }
-            imageMatrix = matrix
             return true
         }
     }

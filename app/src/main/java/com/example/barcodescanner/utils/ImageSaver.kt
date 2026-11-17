@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.media.Image
+import androidx.annotation.OptIn
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import java.io.File
 import java.io.FileOutputStream
@@ -23,6 +25,7 @@ object ImageSaver {
      * @param timestamp 时间戳（用作文件名）
      * @return 保存后的文件绝对路径，失败返回 null
      */
+    @OptIn(ExperimentalGetImage::class)
     fun save(context: Context, imageProxy: ImageProxy, rotationDegrees: Int, timestamp: Long): String? {
         return try {
             val mediaImage = imageProxy.image ?: return null

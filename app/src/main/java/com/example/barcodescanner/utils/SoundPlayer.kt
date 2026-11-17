@@ -5,11 +5,12 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.util.Log
 import com.example.barcodescanner.data.PreferencesManager
 
 object SoundPlayer {
 
-    private var audioTrack: AudioTrack? = null
+    private const val TAG = "SoundPlayer"
 
     fun playScanSound(context: Context) {
         val prefs = PreferencesManager(context)
@@ -55,18 +56,26 @@ object SoundPlayer {
 
         val bufferSize = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
 
-        audioTrack = AudioTrack(
-            audioAttributes,
-            audioFormat,
-            bufferSize,
-            AudioTrack.MODE_STREAM,
-            AudioManager.AUDIO_SESSION_ID_GENERATE
-        )
-
-        audioTrack?.play()
-        audioTrack?.write(generatedSoundByte, 0, generatedSoundByte.size)
-        audioTrack?.stop()
-        audioTrack?.release()
-        audioTrack = null
+        var audioTrack: AudioTrack? = null
+        try {
+            audioTrack = AudioTrack(
+                audioAttributes,
+                audioFormat,
+                bufferSize,
+                AudioTrack.MODE_STREAM,
+                AudioManager.AUDIO_SESSION_ID_GENERATE
+            )
+            audioTrack.play()
+            audioTrack.write(generatedSoundByte, 0, generatedSoundByte.size)
+            audioTrack.stop()
+        } catch (e: Exception) {
+            Log.e(TAG, "播放扫码提示音失败", e)
+        } finally {
+            try {
+                audioTrack?.release()
+            } catch (e: Exception) {
+                Log.w(TAG, "释放 AudioTrack 失败", e)
+            }
+        }
     }
 }

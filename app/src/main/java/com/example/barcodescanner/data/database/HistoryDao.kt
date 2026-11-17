@@ -18,6 +18,12 @@ interface HistoryDao {
     @Query("SELECT * FROM history ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     fun getPaged(limit: Int, offset: Int): Flow<List<HistoryEntity>>
 
+    @Query("SELECT * FROM history WHERE timestamp < :timestamp ORDER BY timestamp DESC")
+    suspend fun getOlderThan(timestamp: Long): List<HistoryEntity>
+
+    @Query("SELECT * FROM history ORDER BY timestamp DESC")
+    suspend fun getAllOnce(): List<HistoryEntity>
+
     @Insert
     suspend fun insert(entity: HistoryEntity): Long
 
@@ -35,7 +41,4 @@ interface HistoryDao {
 
     @Query("SELECT COUNT(*) FROM history")
     suspend fun getCount(): Int
-
-    @Query("UPDATE history SET image_path = :imagePath WHERE timestamp = :timestamp")
-    suspend fun updateImagePath(timestamp: Long, imagePath: String)
 }

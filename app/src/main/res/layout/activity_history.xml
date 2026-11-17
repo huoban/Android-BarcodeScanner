@@ -21,7 +21,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
-        android:text="暂无历史记录"
+        android:text="@string/history_empty"
         android:textSize="18sp"
         android:visibility="gone" />
 
@@ -36,6 +36,7 @@
         android:layout_marginBottom="8dp"
         android:hint="@string/pref_search_hint"
         android:inputType="text"
+        android:importantForAutofill="no"
         android:drawableEnd="?attr/actionModeCloseDrawable"
         android:padding="12dp"
         android:background="@android:drawable/edit_text" />

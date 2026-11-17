@@ -162,6 +162,18 @@
             android:summary="@string/pref_custom_webhook_summary"
             android:defaultValue="https://example.com/api?code={result}" />
 
+        <SwitchPreferenceCompat
+            android:key="remoteQueryEnabled"
+            android:title="@string/pref_remote_query_title"
+            android:summary="@string/pref_remote_query_summary"
+            android:defaultValue="false" />
+
+        <EditTextPreference
+            android:key="remoteQueryUrl"
+            android:title="@string/pref_remote_query_url_title"
+            android:summary="@string/pref_remote_query_url_summary"
+            android:defaultValue="https://example.com/api?cxid=" />
+
         <ListPreference
             android:key="readStringEncoding"
             android:title="@string/pref_encoding_title"

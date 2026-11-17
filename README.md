@@ -1,282 +1,195 @@
-# 自用说明
-- 项目ai完成，别问。问了也不懂。
-- 自家快递太多，需要一个快递记录功能方便“自家老虎”发疯时有证据，以下功能多是多年吃亏总结的。很实用
-- 需要扫码面单号时，对面单完成拍照（方便看面单底部的商品信息）。
-- 需要面单号通过http请求，写入nas做备份 （可选）
-- 需要面单号模糊查找
+# 条码扫描记录
 
-## 条码扫描器 v1.0.9 功能说明
+自用快递面单条码扫描与记录工具。扫码时保存面单截图，方便回看面单底部的商品信息；历史记录支持模糊搜索和按天清理，也可以把单号通过 HTTP 地址提交到 NAS。
 
-## 一、应用概览
+- 当前版本：v1.0.25
+- 最低系统：Android 9.0（API 28）
+- 目标系统：Android 15（API 35）
+- 项目地址：<https://github.com/huoban/Android-BarcodeScanner>
 
-| 项目 | 详情 |
-|------|------|
-| 应用名称 | 条码扫描器 |
-| 包名 | com.example.barcodescanner |
-| 版本 | v1.0.9 (Build 9) |
-| 最低支持 | Android 9 (API 28) |
-| 目标编译 | Android 15 (API 35) |
-| 开发语言 | Kotlin 1.9.22 |
-| 扫码引擎 | Google ML Kit (barcode-scanning 17.3.0) |
-| 摄像头框架 | AndroidX CameraX 1.3.1 |
-| 数据库 | Room 2.6.1 (SQLite) |
+## 功能
 
----
+### 扫码
 
-## 二、Activity 清单与功能
+- CameraX 全屏相机预览，Google ML Kit 离线条码识别
+- 取景框按 76mm × 130mm 物理尺寸换算，最大不超过屏幕的 80%
+- `STRATEGY_KEEP_ONLY_LATEST` 帧策略，并保证同一时间只处理一帧
+- 连续 2 帧识别结果一致才确认，降低误识别
+- 默认仅开启 Code 128，可在设置中开启其他条码格式
+- 支持前置/后置摄像头、闪光灯、变焦
+- 扫码成功播放提示音、振动（均可在设置中关闭）
 
-### 2.1 SplashActivity（启动页）
+支持的条码格式：
 
-- 全屏品牌 Logo 展示（黑色背景 + 相机图标 + 应用名称）
-- 延迟 1.5 秒后自动请求权限
-- 权限清单：
-  - CAMERA（摄像头，必需）
-  - READ_MEDIA_IMAGES（Android 13+ 读取图片）
-  - READ_EXTERNAL_STORAGE（Android 12 及以下读取图片）
-- 权限被拒绝不阻塞流程，直接进入主界面
+| 开关 | 格式 |
+|---|---|
+| QR | QR Code |
+| DataMatrix | Data Matrix |
+| Code39 | Code 39 |
+| UPCEAN | EAN-13、EAN-8、UPC-A、UPC-E |
+| Code128 | Code 128 |
+| PDF | PDF417 |
+| Aztec | Aztec |
+| Code93 | Code 93 |
+| Code2of5 | ITF（交叉二五码） |
+| Codabar | Codabar |
 
-### 2.2 DisplayModeActivity（主扫描界面） — 核心界面
+### 结果处理
 
-#### 实时摄像头扫码
-- CameraX Preview 全屏预览
-- ImageAnalysis 逐帧解码，反压策略 STRATEGY_KEEP_ONLY_LATEST
-- 扫描成功后自动暂停解码，关闭结果对话框后恢复
+- 显示条码类型、格式和扫码内容
+- 一键复制扫码内容
+- 可选自动复制到剪贴板
+- 可选自动提交：使用应用内 WebView 打开自定义地址，地址中的 `{result}` 会替换为 URL 编码后的扫码内容；未包含 `{result}` 时直接拼接在地址末尾
+- 扫码成功后保存 WebP 截图（质量 80%）。截图来自 CameraX ImageAnalysis 分析帧，约 640×480，在可读性和存储空间之间取平衡
 
-#### 取景框
-- 尺寸：76mm × 130mm 物理尺寸
-- 根据屏幕 DPI 自动换算为像素
-- 超出屏幕 80% 时等比缩小适配
-- 绿色矩形边框覆盖层，居中显示
+### 历史记录
 
-#### 扫描结果展示
-- 扫码耗时（秒级显示）
-- 条码类型（40sp 粗体，如 "QR Code"）
-- 条码格式（20sp，如 "QR Code" 等格式标识名）
-- 扫码内容文本（18sp，最多 5 行省略）
+- Room 本地数据库，按扫码时间倒序展示
+- 按扫码内容模糊搜索
+- 可选远程查询：开启后，输入搜索内容时先显示本地结果；停止输入 3 秒后向自定义地址发起 GET 请求，并把返回 JSON 中的 `msg` + `id`、`timestamp` 以蓝色文字追加在本地结果之后
+- 远程结果仅展示文字，不支持点击查看截图；连续输入时只保留最后一次查询结果；进入历史记录页面时不会触发远程查询
+- 点击本地记录：复制内容并打开截图预览
+- 图片预览：默认完整居中显示；支持双指缩放、双击放大/复位、放大后拖动
+- 删除菜单：
+  - 删除 15 天前
+  - 删除 30 天前
+  - 删除 60 天前
+  - 删除 90 天前
+  - 删除 180 天前
+  - 清空全部历史
+- 删除规则：删除 N 天前 = 保留今天及往前 N-1 天，共 N 个自然日，其余记录全部删除
+- 所有删除操作都有二次确认，确认框内会说明删除规则
+- 删除记录时同步删除对应的截图文件
 
-#### 结果操作按钮
-- **提交**：将结果拼接到自定义 Webhook URL（支持 {result} 占位符），通过 WebView 打开
-- **分享**：调用系统分享面板发送文本
-- **复制**：复制结果到剪贴板，并 Toast 提示
-- **继续**：关闭结果覆盖层，恢复扫码
+### 设置
 
-#### 快速扫描模式
-- 在设置中开启后，扫描结果连续追加到底部文本区域
-- 可配置扫描间隔延迟（默认 1500ms）
-- 支持一键清除已扫描内容
-- 不弹出结果覆盖层，连续扫码
-
-#### 工具栏按钮（6 个）
-| 按钮 | 位置 | 功能 |
-|------|------|------|
-| 设置 | 左上 | 进入 SettingsActivity |
-| 分享应用 | 左上 | 分享 Google Play 商店链接 |
-| 关于 | 左上 | 进入 AboutActivity |
-| 缩放 | 右下 | 最小/最大变焦切换 |
-| 闪光灯 | 右下 | 开关闪光灯（灯泡图标） |
-| 历史记录 | 右下 | 进入 HistoryActivity |
-
-#### 扫码成功反馈
-- **音效**：可配置频率（Hz）、时长（ms）、调制、音量的正弦波提示音
-- **振动**：100ms 短振动
-- 两者均可在设置中独立开关
-
-#### 自动操作（可选配置）
+- 10 个条码格式开关，对应上表中的 13 种格式
+- 前置摄像头
+- 扫码提示音：开关、频率、时长、调制、音量
+- 振动
 - 自动复制到剪贴板
-- 自动提交到 Webhook URL（跳过结果展示）
+- 自动提交及自动提交自定义地址
+- 远程查询及远程查询自定义地址（用于历史记录搜索）
+- 关于页面：应用版本、ML Kit 版本、项目地址（点击调用系统浏览器打开）
 
-#### 扫码截图保存
-- 每次扫码成功自动保存相机帧为 WebP 格式（80% 质量）
-- 存储位置：`files/images/{timestamp}.webp`
-- 保存的图片可在历史记录中点击预览
+> 扫描方向、扫描分辨率、努力级别、字符串编码属于历史预留设置项，目前仅保存配置，不影响实际扫码。
 
-### 2.3 SettingsActivity（设置界面）
+## 技术栈
 
-通过 AndroidX Preference 框架加载 [preferences.xml](file:///workspace/BarcodeScanner/app/src/main/res/xml/preferences.xml)，分为 4 大分类：
+| 类别 | 选型 |
+|---|---|
+| 语言 | Kotlin 1.9.22 |
+| 构建 | AGP 8.2.0、Gradle 8.5、JDK 17 |
+| 相机 | AndroidX CameraX 1.3.1 |
+| 扫码 | Google ML Kit barcode-scanning 17.3.0 |
+| 数据库 | Room 2.6.1 + KSP |
+| 网络 | OkHttp 4.12.0、org.json |
+| 协程 | kotlinx-coroutines 1.7.3 |
+| UI | AppCompat 1.6.1、Material 1.11.0、ConstraintLayout 2.1.4 |
+| 最低版本 | Android 9.0（API 28） |
+| 目标/编译版本 | Android 15（API 35） |
+| ABI | arm64-v8a |
 
-#### 条码类型（10 个开关）
-| 开关 | 条码格式 | 默认 |
-|------|---------|------|
-| QR Code | 二维码 | 关闭 |
-| Data Matrix | 工业小型二维码 | 关闭 |
-| Code 39 | 字母数字工业码 | 关闭 |
-| EAN/UPC | 商品码（EAN-13/EAN-8/UPC-A/UPC-E） | 关闭 |
-| Code 128 | 高密度全 ASCII 条码 | **开启** |
-| PDF417 | 堆叠式二维条码 | 关闭 |
-| Aztec | 中心定位二维矩阵码 | 关闭 |
-| Code 93 | Code 39 增强版 | 关闭 |
-| Code 25 (ITF) | 交叉 25 码 | 关闭 |
-| Codabar | 血库/图书馆专用 | 关闭 |
+## 数据存储
 
-> 当所有条码类型关闭时，扫码引擎不识别任何格式
+- 数据库：`barcode_scanner_database`，表 `history`
+- 字段：条码类型、条码格式、扫码内容、GS1 标记、原始字节、方向、时间戳、截图路径
+- 截图目录：`filesDir/images/{timestamp}.webp`
+- 时间戳字段带索引，历史列表按时间倒序查询
+- 数据库使用 `fallbackToDestructiveMigration()`：后续版本如果修改表结构，升级时会清空历史数据
+- 系统备份仅包含 SharedPreferences，数据库和截图不会自动备份
 
-#### 扫描参数（7 项）
-| 设置项 | 类型 | 选项 | 默认值 |
-|--------|------|------|--------|
-| 扫描方向 | 单选列表 | 水平 / 全方向 | 全方向 |
-| 扫描分辨率 | 单选列表 | HD (720p) / Full HD (1080p) | Full HD |
-| 扫描延迟 | 数字输入 | ms | 400 |
-| 重复超时 | 数字输入 | ms | 400 |
-| 努力级别 | 单选列表 | 快速 / 更努力 | 更努力 |
-| 快速扫描 | 开关 | 开/关 | 关闭 |
-| 前置摄像头 | 开关 | 开/关 | 关闭 |
+## 权限
 
-#### 通知设置（6 项）
-| 设置项 | 类型 | 默认值 |
-|--------|------|--------|
-| 通知音效 | 开关 | 开启 |
-| 音效频率（Hz） | 数字输入 | 1000 |
-| 音效时长（ms） | 数字输入 | 150 |
-| 音效调制 | 数字输入 | 0 |
-| 音效音量（%） | 数字输入 | 80 |
-| 振动 | 开关 | 开启 |
+| 权限 | 用途 |
+|---|---|
+| `CAMERA` | 相机预览与扫码 |
+| `VIBRATE` | 扫码成功振动 |
+| `INTERNET` | 打开自定义提交地址 |
+| `READ_MEDIA_IMAGES` | Android 13+ 读取图片 |
+| `READ_EXTERNAL_STORAGE` | Android 12L 及以下读取图片，`maxSdkVersion=32` |
 
-#### 结果处理（4 项）
-| 设置项 | 类型 | 默认值 |
-|--------|------|--------|
-| 自动复制 | 开关 | 关闭 |
-| 自动提交 | 开关 | 关闭 |
-| 自定义地址 | 文本输入 | `https://example.com/api?code={result}` |
-| 字符串编码 | 单选列表 | UTF-8（可选 ISO-8859-1 / GBK） |
+应用允许明文 HTTP，便于访问局域网 NAS；如果提交地址支持 HTTPS，建议优先使用 HTTPS。
 
-### 2.4 HistoryActivity（历史记录）
+## 构建
 
-- **列表展示**：RecyclerView 按时间倒序展示所有扫码记录
-  - 每项显示：条码类型 + 内容（主文本）、时间戳（副文本）
-- **实时搜索**：顶部搜索框，按内容模糊匹配过滤
-- **空状态提示**：无记录时居中显示"暂无历史记录"
-- **长按多选**：长按进入多选模式，底部显示操作栏
-  - **CSV 导出**：生成 CSV 文件（逗号自动替换中文逗号防冲突），通过系统分享面板发送
-  - **批量分享**：合并选中内容为文本，通过系统分享发送
-  - **取消**：退出多选模式
-- **菜单**：Toolbar 右上角「清空历史」删除全部记录
-- **点击记录**：复制内容 + 若有截图则跳转 ImagePreviewActivity
+### 环境要求
 
-### 2.5 ImagePreviewActivity（图片查看）
+- JDK 17
+- Android SDK Platform 35、Build-Tools 35
+- Gradle 8.5（项目包含 Gradle Wrapper）
 
-- 显示扫码时自动保存的截图
-- 使用自定义 **TouchImageView** 控件：
-  - 双指缩放（1x ~ 5x）
-  - 缩放后单指拖动
-  - 双击切换缩放/还原（2.5x）
-  - 松手自动边界回弹修正
-- 图片路径不存在时 Toast 提示并自动关闭
+### 命令
 
-### 2.6 AboutActivity（关于页）
+```bash
+# Debug
+./gradlew :app:assembleDebug
 
-- 应用图标 + 名称居中展示
-- 应用版本号（从 BuildConfig 读取）
-- Google ML Kit 版本号
-- 项目描述："基于 Google ML Kit 开源扫码引擎构建，支持 15+ 种条码格式识别"
-
-### 2.7 WebViewActivity（内嵌浏览器）
-
-- 用于扫描结果的「提交」功能，打开自定义 Webhook URL
-- 启用 JavaScript + DOM Storage + 缩放
-- 顶部进度条，页面加载完成后自动隐藏
-- 返回键优先 WebView 回退，无历史则退出 Activity
-
----
-
-## 三、核心引擎
-
-### 3.1 BarcodeScannerManager（扫码管理器）
-
-- 封装 Google ML Kit BarcodeScanning
-- 支持 13 种条码格式（QR/DataMatrix/PDF417/Code128/Code39/EAN13/EAN8/UPCA/UPCE/Aztec/ITF/Code93/Codabar）
-- 根据设置动态切换启用的格式集合
-- **重复过滤**：相同文本 + 配置超时（默认 400ms）内不重复触发
-- **空集合保护**：所有格式关闭时，捕获 ML Kit 的 IllegalArgumentException，安全返回 null
-
-### 3.2 CameraManager（摄像头管理器）
-
-- CameraX ProcessCameraProvider 异步初始化
-- Preview + ImageAnalysis 双用况绑定
-- 单线程 Executor 执行帧分析回调
-- 支持前后摄像头切换
-- 闪光灯控制（enableTorch，检测硬件支持）
-- 变焦控制（setZoomRatio，自动 clamp 到硬件范围）
-
-### 3.3 扫码与结果数据流
-
-```
-CameraX 帧回调
-  → processFrame(ImageProxy)
-    → BarcodeScannerManager.scanFrame()
-      → ML Kit BarcodeScanner.process()
-        → 重复检测
-        → 返回 BarcodeResult
-    → ImageSaver.save() → WebP 文件
-    → onBarcodeDetected(result)
-      → SoundPlayer 音效
-      → Vibrator 振动
-      → HistoryDao.insert() → Room
-      → 自动复制（可选）
-      → 自动提交（可选）
-      → 显示结果覆盖层
+# Release
+./gradlew :app:assembleRelease
 ```
 
----
+如果本地没有配置 `local.properties`，请先写入 Android SDK 路径：
 
-## 四、数据存储
+```properties
+sdk.dir=/path/to/android-sdk
+```
 
-### 4.1 Room 数据库（history 表）
+### 产物
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | INTEGER PK | 自增主键 |
-| barcode_type | TEXT | 条码类型（中文显示名） |
-| barcode_format | TEXT | 条码格式标识 |
-| result_text | TEXT | 扫码结果文本 |
-| is_gs1 | INTEGER | 是否 GS1 标准 |
-| raw_bytes | BLOB | 原始字节数据 |
-| orientation | INTEGER | 扫描方向 |
-| timestamp | INTEGER | 扫码时间戳（ms） |
-| image_path | TEXT | 截图文件路径 |
+| 类型 | 路径 |
+|---|---|
+| Debug | `app/build/outputs/apk/debug/app-arm64-v8a-debug_<version>.apk` |
+| Release | `app/build/outputs/apk/release/app-arm64-v8a-release_<version>.apk` |
 
-索引：timestamp DESC、barcode_type
+- 仅打包 `arm64-v8a`
+- Release 开启 R8 混淆和资源压缩
+- Release 使用项目内的 debug 签名配置，适合自用安装；如需上架或分发，请替换为正式签名
 
-### 4.2 SharedPreferences（配置存储）
+## 项目结构
 
-- 条码类型开关 × 10
-- 扫描参数 × 8
-- 通知参数 × 7
-- 结果处理参数 × 4
-- 屏幕分辨率信息 × 5（首次启动保存）
+```text
+app/src/main/
+├── java/com/example/barcodescanner/
+│   ├── SplashActivity.kt              启动页与权限申请
+│   ├── DisplayModeActivity.kt         扫码主界面
+│   ├── HistoryActivity.kt             历史记录、本地/远程搜索、删除
+│   ├── ImagePreviewActivity.kt        截图预览
+│   ├── SettingsActivity.kt            设置容器
+│   ├── SettingsFragment.kt            设置项与关于入口
+│   ├── AboutActivity.kt               关于页面、项目地址
+│   ├── WebViewActivity.kt             提交地址内置浏览器
+│   ├── camera/CameraManager.kt        CameraX 生命周期、闪光灯、变焦
+│   ├── scanner/                       ML Kit 封装、多帧确认、结果模型
+│   ├── data/                          偏好设置、Room 数据库
+│   ├── utils/                         截图保存、提示音、剪贴板、CSV
+│   └── view/TouchImageView.kt         图片缩放、拖动、居中
+└── res/
+    ├── layout/                        页面布局
+    ├── drawable-nodpi/splash_logo.png 启动页/关于页品牌图
+    ├── mipmap-*/                      应用图标
+    └── values/                        字符串、颜色、主题
+```
 
----
+## 版本说明
 
-## 五、工具类
+### v1.0.25
 
-| 工具 | 功能 |
-|------|------|
-| **Util** | 剪贴板复制 + Toast、时间格式化（yyyy-MM-dd HH:mm:ss）、系统分享 Intent |
-| **SoundPlayer** | AudioTrack 生成可配置频率/时长/调制/音量的正弦波提示音 |
-| **CsvExporter** | 历史记录导出为 CSV 文件，通过 FileProvider 分享 |
-| **ImageSaver** | YUV_420_888 → RGB Bitmap → WebP(80%) 保存到 files/images/ |
+- 结果处理新增远程查询开关和远程查询自定义地址
+- 历史记录搜索在本地结果之后追加远程 JSON 结果，使用蓝色文字显示
+- 远程结果仅展示文字，不支持点击查看截图
+- 停止输入 3 秒后触发远程查询，连续输入只保留最后一次返回结果
+- 进入历史记录页面时不触发远程查询
+- 调整自动提交自定义地址的标题和示例说明
 
----
+### v1.0.24
 
-## 六、权限与安全
-
-| 权限 | 用途 | 条件 |
-|------|------|------|
-| CAMERA | 摄像头扫码 | 始终 |
-| INTERNET | 网络请求（Webhook/搜索） | 始终 |
-| VIBRATE | 扫码成功振动 | 始终 |
-| READ_EXTERNAL_STORAGE | 读取图片 | SDK ≤ 32 |
-| READ_MEDIA_IMAGES | 读取图片 | SDK ≥ 33 |
-
-- NetworkSecurityConfig：允许 HTTP 明文流量（配合内网 Webhook 使用）
-- FileProvider：安全分享 CSV 和截图文件
-
----
-
-## 七、其他技术细节
-
-- **ViewBinding**：主界面使用 DataBinding/ViewBinding 绑定布局
-- **自动版本递增**：每次 `preBuild` 时 versionCode+1、patch+1，写入 `version.properties`
-- **架构**：仅 arm64-v8a，使用 APK splits
-- **ProGuard 混淆**：Release 构建开启，保护 ML Kit/Room/Moshi/OkHttp 关键类
-- **数据库迁移**：`fallbackToDestructiveMigration()`，结构变更时重建
-- **生命周期管理**：onResume 重新绑定 CameraX，onPause 解绑，onDestroy 释放 ML Kit Scanner
+- 应用名称调整为「条码扫描记录」
+- 替换应用图标、启动页品牌图和关于页图标
+- 关于页新增项目地址，点击使用系统浏览器打开
+- 历史记录新增 60/90/180 天前删除选项
+- 删除前增加二次确认并说明删除规则
+- 删除历史记录时同步清理截图文件
+- 修复图片预览默认不居中、需要手动拖动的问题
+- 修复扫码帧并发、相机生命周期、自动提交暂停、闪光灯图标等问题
+- 更新 README 为当前版本功能说明

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">条码扫描器</string>
+    <string name="app_name">条码扫描记录</string>
     <string name="settings_title">设置</string>
     <string name="history_title">历史记录</string>
     <string name="about_title">关于</string>
@@ -8,8 +8,8 @@
     <!-- 通用 -->
     <string name="copied_to_clipboard">已复制到剪贴板</string>
     <string name="share_via">分享方式</string>
-    <string name="share_app_message">试试这款专业的条码扫描器: %s</string>
-    <string name="welcome_tip">欢迎使用条码扫描器!将摄像头对准条码即可自动识别。</string>
+    <string name="share_app_message">试试这款专业的条码扫描记录工具: %s</string>
+    <string name="welcome_tip">欢迎使用条码扫描记录！将摄像头对准条码即可自动识别。</string>
     <string name="no_barcode_found">未检测到条码</string>
     <string name="scan_failed">扫描失败</string>
     <string name="scan_duration">点击空白处继续 %s 秒</string>
@@ -17,6 +17,9 @@
     <!-- 版本信息 -->
     <string name="app_version">应用版本: %s</string>
     <string name="ml_kit_version">Google ML Kit 版本: %s</string>
+    <string name="about_description">基于 Google ML Kit 开源扫码引擎构建\n支持 13 种常用条码格式识别</string>
+    <string name="about_project_url">项目地址：https://github.com/huoban/Android-BarcodeScanner</string>
+    <string name="about_link_failed">未找到可打开浏览器的应用</string>
 
     <!-- 设置分类 -->
     <string name="pref_category_barcode_types">条码类型</string>
@@ -96,8 +99,12 @@
     <string name="pref_auto_copy_summary">扫描结果自动复制到剪贴板</string>
     <string name="pref_open_url_title">自动提交</string>
     <string name="pref_open_url_summary">扫描后将结果拼接到自定义地址并通过内置浏览器访问</string>
-    <string name="pref_custom_webhook_title">自定义地址</string>
-    <string name="pref_custom_webhook_summary">使用 {result} 作为扫描结果占位符,如: https://example.com/api?code={result}</string>
+    <string name="pref_custom_webhook_title">自动提交自定义地址</string>
+    <string name="pref_custom_webhook_summary">例：https://地址/Exp.php?key=PassWord&amp;id=</string>
+    <string name="pref_remote_query_title">远程查询</string>
+    <string name="pref_remote_query_summary">历史记录查询时，会同时查询远程数据库。</string>
+    <string name="pref_remote_query_url_title">远程查询自定义地址</string>
+    <string name="pref_remote_query_url_summary">例：https://地址/Exp.php?key=PassWord&amp;cxid=</string>
     <string name="pref_encoding_title">字符串编码</string>
 
     <!-- 编码选项 -->
@@ -122,4 +129,33 @@
     <string name="btn_export_csv">导出 CSV</string>
     <string name="pref_search_hint">搜索扫码内容</string>
     <string name="image_preview_title">图片查看</string>
+    <string name="image_path_empty">图片路径为空</string>
+    <string name="image_file_not_found">图片文件不存在</string>
+    <string name="image_load_failed">图片加载失败</string>
+
+    <!-- 历史记录删除 -->
+    <string name="history_delete_menu">删除历史</string>
+    <string name="history_delete_title">选择删除范围</string>
+    <string name="history_delete_older_than_days">删除 %1$d 天前</string>
+    <string name="history_delete_all">清空全部历史</string>
+    <string name="history_delete_confirm_title_days">确认删除 %1$d 天前的记录？</string>
+    <string name="history_delete_older_than_message">删除规则：\n保留今天及往前 %2$d 天，共 %1$d 天的记录；早于该范围的记录将被永久删除。\n\n删除后对应截图也会一并删除，且无法恢复。确定删除吗？</string>
+    <string name="history_delete_all_confirm_title">确认清空全部历史？</string>
+    <string name="history_delete_all_message">删除规则：\n所有历史记录及其截图将被永久删除，且无法恢复。\n\n确定删除吗？</string>
+    <string name="history_delete_confirm">确定删除</string>
+    <string name="history_delete_cancel">取消删除</string>
+    <string name="history_deleted_days">已删除 %1$d 天前的 %2$d 条记录</string>
+    <string name="history_deleted_all">已清空 %1$d 条记录</string>
+    <string name="history_delete_failed">删除失败，请重试</string>
+    <string name="history_empty">暂无历史记录</string>
+    <string name="history_item_title">%1$s: %2$s</string>
+    <string name="no_image_record">无图片记录</string>
+    <string name="remote_query_failed">网络查询失败，请稍后重试</string>
+    <string name="remote_query_url_missing">请先在设置中填写远程查询自定义地址</string>
+    <string name="remote_query_no_match">无匹配：</string>
+
+    <!-- 闪光灯 -->
+    <string name="flash_on">闪光灯已开</string>
+    <string name="flash_off">闪光灯已关</string>
+    <string name="flash_unavailable">当前设备不支持闪光灯</string>
 </resources>

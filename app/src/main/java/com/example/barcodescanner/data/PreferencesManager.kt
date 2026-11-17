@@ -36,6 +36,8 @@ class PreferencesManager(context: Context) {
         const val KEY_AUTO_COPY_TO_CLIPBOARD = "autoCopyToClipboard"
         const val KEY_OPEN_URL_AUTOMATICALLY = "openUrlAutomatically"
         const val KEY_CUSTOM_WEBHOOK_URL = "customWebhookUrl"
+        const val KEY_REMOTE_QUERY_ENABLED = "remoteQueryEnabled"
+        const val KEY_REMOTE_QUERY_URL = "remoteQueryUrl"
         const val KEY_READ_STRING_ENCODING = "readStringEncoding"
     }
 

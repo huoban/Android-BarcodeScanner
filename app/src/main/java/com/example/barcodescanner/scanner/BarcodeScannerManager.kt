@@ -2,6 +2,8 @@ package com.example.barcodescanner.scanner
 
 import android.graphics.Bitmap
 import android.graphics.Point
+import androidx.annotation.OptIn
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import com.example.barcodescanner.data.PreferencesManager
 import com.google.mlkit.vision.barcode.BarcodeScanner
@@ -9,11 +11,13 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
 class BarcodeScannerManager(private val preferencesManager: PreferencesManager) {
 
     private var barcodeScanner: BarcodeScanner = createScanner(defaultFormats)
+    private var currentFormats: Set<Int> = defaultFormats
     private var confirmCount: Int = 0
     private var pendingResult: BarcodeResult? = null
     private val confirmThreshold: Int = 2
@@ -37,9 +41,15 @@ class BarcodeScannerManager(private val preferencesManager: PreferencesManager) 
     }
 
     fun applySettings() {
-        val enabledFormats = buildFormatSet()
+        // 空集合时回退到 Code 128，保证扫描器始终有可用格式
+        val enabledFormats = buildFormatSet().ifEmpty { setOf(Barcode.FORMAT_CODE_128) }
+        if (enabledFormats == currentFormats) return
+
+        // 重建扫描器时清空多帧确认状态，避免旧结果串到新配置
+        resetPendingResult()
         barcodeScanner.close()
         barcodeScanner = createScanner(enabledFormats)
+        currentFormats = enabledFormats
     }
 
     private fun buildFormatSet(): Set<Int> {
@@ -92,8 +102,10 @@ class BarcodeScannerManager(private val preferencesManager: PreferencesManager) 
         return BarcodeScanning.getClient(options)
     }
 
+    @OptIn(ExperimentalGetImage::class)
     suspend fun scanFrame(imageProxy: ImageProxy): BarcodeResult? {
-        val image = InputImage.fromMediaImage(imageProxy.image!!, imageProxy.imageInfo.rotationDegrees)
+        val mediaImage = imageProxy.image ?: return null
+        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
         return try {
             val barcodes = barcodeScanner.process(image).await()
@@ -109,9 +121,13 @@ class BarcodeScannerManager(private val preferencesManager: PreferencesManager) 
             toBarcodeResult(first).let { result ->
                 confirmResult(result)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: IllegalArgumentException) {
+            resetPendingResult()
             null
         } catch (e: Exception) {
+            resetPendingResult()
             null
         }
     }
@@ -130,6 +146,8 @@ class BarcodeScannerManager(private val preferencesManager: PreferencesManager) 
             }
 
             toBarcodeResult(first)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: IllegalArgumentException) {
             null
         } catch (e: Exception) {
